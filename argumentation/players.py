@@ -1,7 +1,7 @@
 import random
 
-from arg.src.common import *
-from arg.src.aal import Labelling
+from .common import Move, PlayerType, NoMoreMoves, IllegalArgument, IllegalMove
+from .aal import Labelling, is_justified, oi_to_args
 
 
 class Player:

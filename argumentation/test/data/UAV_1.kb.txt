@@ -1,0 +1,41 @@
+# /Users/roman/Work/Aspic-/data/UAV_2.kb.txt
+
+# terminology:
+# loc - localiser (horizontal part of ILS)
+# gss - gliding slope station (vertical part of ILS)
+# ils - instrumental landing system
+# sls - suitable landing site
+# lv  - low visibility
+# alp - automated landing possible
+# vlp - visual landing possible
+# bat - there's a better alternative possible then...
+# land - we're actually going to land somewhere
+
+# epistemic reasoning aka fact finding - how to find suitable landing site
+-locA --> -ilsA
+-locB --> -ilsB
+
+-gssA --> -ilsA
+-gssB --> -ilsB
+
+-ilsA --> -alpA
+-ilsB --> -alpB
+
+ lvA --> -vlpA
+ lvB --> -vlpB
+
+=(alpA)=> slsA
+=(alpB)=> slsB
+=(vlpA)=> slsA
+=(vlpB)=> slsB
+
+# now choose between suitable possibilities
+
+slsA=(-batA)=> flyToLandingSiteA
+slsB=(-batB)=> flyToLandingSiteB
+
+# manually adding "preferences" for choosing suitable possibilities
+slsA --> batB
+
+--> -locA
+--> lvA

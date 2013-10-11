@@ -14,8 +14,8 @@ from optparse import OptionParser
 from cmd import Cmd
 from glob import glob
 
-import aal as af
-from kb import *
+import .aal as af
+from .kb import *
 
 
 class Commands(Cmd):

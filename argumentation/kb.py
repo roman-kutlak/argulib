@@ -1,6 +1,6 @@
-import pdb
 import copy
 from collections import defaultdict
+
 from pyparsing import Word, Group, Optional, alphanums, alphas, delimitedList
 
 """ Structures and functions for reading a knowledge base of rules for 
@@ -602,29 +602,4 @@ def seq_len(seq):
     return sum(1 for i in seq)
 
 
-# some instances for interactive testing
-################################################################################
-
-#a = Literal('a')
-#b = Literal('b')
-#r = Literal('r')
-#nq = Literal('q', True)
-#r1 = StrictRule([a, b], nq)
-#r2 = DefeasibleRule('r2', [a,nq], r, [b])
-#
-#sr_str = "-a,b,-c --> -q"
-#dr_str = "r1:-a,b =(c,-d)=> r"
-#dr2_str = "r2:-a,b ==> r"
-#o_str = "r1, r2, r3 < r4, r5 < r6"
-#
-#sr = strict_rule.parseString(sr_str)
-#dr = defeasible_rule.parseString(dr_str)
-#o = orderings.parseString(o_str)
-#
-#s1 = StrictRule.from_str('p --> q')
-#s2 = StrictRule.from_str('l --> m')
-#s3 = StrictRule.from_str('-r --> r')
-
-
-kb = KnowledgeBase.from_file('/Users/roman/Work/Aspic-/data/eg_tandem.txt')
 

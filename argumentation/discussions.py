@@ -1,6 +1,6 @@
 #from enum import Enum
 
-from arg.src.common import *
+from .common import *
 
 
 class GroundedDiscussion:

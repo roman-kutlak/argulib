@@ -7,8 +7,8 @@
     """
 
 import copy
-from arg.src.common import *
-from arg.src.kb import Literal
+from .common import *
+from .kb import Literal
 
 
 class Labelling:

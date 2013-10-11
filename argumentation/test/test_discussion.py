@@ -1,18 +1,12 @@
-import sys
-
-# we are assuming that the file runs from $(ASPIC-_ROOT)/tests
-sys.path.insert(0, '../src')
-
-from common import *
-import discussions
-from kb import *
-from players import *
-
-
 import unittest
 
-#if __name__ == "__main__":
-#       unittest.main()
+from argumentation.common import Move, PlayerType
+from argumentation.common import IllegalMove, NoMoreMoves, NotYourMove
+from argumentation.discussions import GroundedDiscussion, GroundedDiscussion2
+from argumentation.kb import KnowledgeBase, Argument, StrictRule, DefeasibleRule
+from argumentation.aal import ArgumentationFramework, Labelling
+from argumentation.players import Player, SmartPlayer, ScepticalPlayer
+
 
 class GroundedDiscussionTest(unittest.TestCase):
     """ Test the discussion protocol. """
@@ -48,7 +42,7 @@ class GroundedDiscussionTest(unittest.TestCase):
 
     def test_claim(self):
         """ Test the rules for 'claim' speech act. """
-        d = discussions.GroundedDiscussion(self.l, self.p, self.o)
+        d = GroundedDiscussion(self.l, self.p, self.o)
 
         # test that only the proponent can 'claim'
         self.assertRaises(NotYourMove, d.move, *self.o_claim_a)
@@ -63,7 +57,7 @@ class GroundedDiscussionTest(unittest.TestCase):
 
     def test_why(self):
         """ Test the rules for 'why' speech act. """
-        d = discussions.GroundedDiscussion(self.l, self.p, self.o)
+        d = GroundedDiscussion(self.l, self.p, self.o)
 
         # test that only the oponent can use 'why'
         self.assertRaises(NotYourMove, d.move, *self.p_why_a)
@@ -79,7 +73,7 @@ class GroundedDiscussionTest(unittest.TestCase):
 
     def test_because(self):
         """ Test the rules for 'why' speech act. """
-        d = discussions.GroundedDiscussion(self.l, self.p, self.o)
+        d = GroundedDiscussion(self.l, self.p, self.o)
 
         # test that only the proponent can use 'because'
         self.assertRaises(NotYourMove, d.move, *self.o_because_a)
@@ -99,7 +93,7 @@ class GroundedDiscussionTest(unittest.TestCase):
 
     def test_concede(self):
         """ Test the rules for 'why' speech act. """
-        d = discussions.GroundedDiscussion(self.l, self.p, self.o)
+        d = GroundedDiscussion(self.l, self.p, self.o)
         d.move(*self.p_claim_a)
         d.move(*self.o_why_a)
         d.move(self.p, Move.BECAUSE, Labelling(None, set(), set(), set()))
@@ -125,10 +119,10 @@ class GroundedDiscussionTest(unittest.TestCase):
 
 
 def discuss(arg=None):
-    kb = KnowledgeBase.from_file('/Users/roman/Work/Aspic-/data/eg2.txt')
+    kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
-    d = discussions.GroundedDiscussion(l,
+    d = GroundedDiscussion(l,
                            Player(PlayerType.PROPONENT),
                            Player(PlayerType.OPONENT))
     af.save_graph()
@@ -153,10 +147,10 @@ def discuss(arg=None):
     return d
 
 def discuss2(arg=None):
-    kb = KnowledgeBase.from_file('/Users/roman/Work/Aspic-/data/eg2.txt')
+    kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
-    d = discussions.GroundedDiscussion(l,
+    d = GroundedDiscussion(l,
                            ScepticalPlayer(PlayerType.PROPONENT),
                            ScepticalPlayer(PlayerType.OPONENT))
     af.save_graph()
@@ -181,10 +175,10 @@ def discuss2(arg=None):
     return d
 
 def discuss3(arg=None):
-    kb = KnowledgeBase.from_file('/Users/roman/Work/Aspic-/data/UAV_2.kb.txt')
+    kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
-    d = discussions.GroundedDiscussion2(l,
+    d = GroundedDiscussion2(l,
                            SmartPlayer(PlayerType.PROPONENT),
                            SmartPlayer(PlayerType.OPONENT))
     af.save_interesting_graph()
@@ -209,3 +203,8 @@ def discuss3(arg=None):
     return d
 
 print(discuss3('A0'))
+
+
+if __name__ == '__main__':
+    unittest.main()
+
