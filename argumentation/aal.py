@@ -1,10 +1,10 @@
 """
+    author: Roman Kutlak <roman@kutlak.net>
+
     Based on the Abstract Argumentation Library by
     Mikolaj Podlaszewski <mikolaj.podlaszewski@gmail.com>
-    
-    author: Roman Kutlak <roman@kutlak.net>
-    
-    """
+
+"""
 
 import copy
 from .common import *
@@ -240,11 +240,13 @@ class Labelling:
         return list(args)[0]
 
     def find_lowest_step(self, labelled_arguments):
+        print('Arguments: %s' % str(labelled_arguments))
         args = list()
         for la in labelled_arguments:
             args.append( (self.steps[la.argument], la))
 
         args = sorted(args, key=lambda x: x[0])
+        print('Sorted arguments: %s' % str(args))
         return args[0][1]
 
     def find_argument(self, string):

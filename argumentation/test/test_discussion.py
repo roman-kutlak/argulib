@@ -205,6 +205,18 @@ def discuss3(arg=None):
 print(discuss3('A0'))
 
 
+
+#Traceback (most recent call last):
+#  File "/Users/roman/Work/software/Sassy/sassy/ui/gui.py", line 280, in handle_dialog
+#    resp = discussion.proponent.make_move(discussion)
+#  File "sassyargumentation/argumentation/players.py", line 39, in make_move
+#    return self._answer_why(discussion, lab_arg)
+#  File "sassyargumentation/argumentation/players.py", line 181, in _answer_why
+#    attacker = discussion.labelling.find_lowest_step(attackers)
+#  File "sassyargumentation/argumentation/aal.py", line 248, in find_lowest_step
+#    return args[0][1]
+#IndexError: list index out of range
+
 if __name__ == '__main__':
     unittest.main()
 
