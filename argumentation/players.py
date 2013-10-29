@@ -178,6 +178,8 @@ class SmartPlayer(Player):
         loi = discussion.open_issues[-1] # == lab_arg
         attackers = self._possible_attackers(discussion, loi)
         # now select the attacker with the lowest step?
+        if len(attackers) == 0:
+            return (self, Move.BECAUSE, Labelling(None, set(), set(), set()))
         attacker = discussion.labelling.find_lowest_step(attackers)
         self.update_commitment(attacker)
         return (self, Move.BECAUSE, attacker)
