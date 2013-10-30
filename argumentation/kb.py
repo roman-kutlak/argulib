@@ -573,7 +573,7 @@ class Argument:
 # parsing related functions
 ################################################################################
 
-literal = Group(Optional(Word('-')) + Word(alphas))
+literal = Group(Optional(Word('-')) + Word(alphas + '_'))
 literals = delimitedList(literal)
 antecedent = literals
 vulnerabilities = literals
