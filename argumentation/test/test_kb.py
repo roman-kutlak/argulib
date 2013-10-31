@@ -5,37 +5,9 @@ from argumentation.kb import Argument, KnowledgeBase
 from argumentation.kb import ParseError
 
 
-data = KnowledgeBase.from_file('./argumentation/test/data/eg_tandem.txt')
+test_kb_path = './argumentation/test/data/test.kb.txt'
 
-class TestKb(unittest.TestCase):
-    pass
-
-# some instances for interactive testing
-################################################################################
-
-#a = Literal('a')
-#b = Literal('b')
-#r = Literal('r')
-#nq = Literal('q', True)
-#r1 = StrictRule([a, b], nq)
-#r2 = DefeasibleRule('r2', [a,nq], r, [b])
-#
-#sr_str = "-a,b,-c --> -q"
-#dr_str = "r1:-a,b =(c,-d)=> r"
-#dr2_str = "r2:-a,b ==> r"
 #o_str = "r1, r2, r3 < r4, r5 < r6"
-#
-#sr = strict_rule.parseString(sr_str)
-#dr = defeasible_rule.parseString(dr_str)
-#o = orderings.parseString(o_str)
-#
-#s1 = StrictRule.from_str('p --> q')
-#s2 = StrictRule.from_str('l --> m')
-#s3 = StrictRule.from_str('-r --> r')
-
-
-#kb = KnowledgeBase.from_file('./test/data/eg_tandem.txt')
-
 
 
 class TestLiteral(unittest.TestCase):
@@ -100,10 +72,67 @@ class TestLiteral(unittest.TestCase):
 class TestStrictRule(unittest.TestCase):
     """ Test harness for class StrictRule. """
 
+    @classmethod
+    def setUpClass(cls):
+        cls.a = Literal('a')
+        cls.b = Literal('b')
+        cls.c = Literal('c')
+        cls.nc = Literal('c', negated=True)
+
+    def test_basics(self):
+        r1 = StrictRule([self.a, self.b], self.nc)
+        r2 = StrictRule.from_str('a, b --> -c')
+        r3 = StrictRule.from_str('a, b --> c')
+        r4 = StrictRule.from_str('a --> -c')
+        self.assertEqual(r1, r2)
+        self.assertNotEqual(r1, r3)
+        self.assertNotEqual(r1, r4)
+
+
+class TestDefeasibleRule(unittest.TestCase):
+    """ Tests for class DefeasibleRule. """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.a = Literal('a')
+        cls.b = Literal('b')
+        cls.c = Literal('c')
+        cls.d = Literal('d')
+        cls.nc = Literal('c', negated=True)
+
+    def test_basics(self):
+        r1 = DefeasibleRule('r1', [self.a, self.b], self.nc)
+        r2 = DefeasibleRule.from_str('a, b ==> -c')
+        r3 = DefeasibleRule.from_str('a, b ==> c')
+        r4 = DefeasibleRule.from_str('a ==> -c')
+        r5 = DefeasibleRule.from_str('a, b =(d)=> -c')
+        self.assertEqual(r1, r2)
+        self.assertNotEqual(r1, r3)
+        self.assertNotEqual(r1, r4)
+        self.assertNotEqual(r1, r5)
+
+        self.assertEqual([self.a, self.b], r5.antecedent)
+        self.assertEqual([self.d], r5.vulnerabilities)
+        self.assertEqual(self.nc, r5.consequent)
+
+
+class TestArgument(unittest.TestCase):
+    """ Test the functionality of class Argument. """
+
     def test_basics(self):
         pass
 
 
+class TestKb(unittest.TestCase):
+    """ Tests for KnowledgeBase functionality. """
+
+    def test_basics(self):
+        kb = KnowledgeBase()
+        self.assertIsNotNone(kb)
+        kb = KnowledgeBase.from_file(test_kb_path)
+        self.assertIsNotNone(kb)
+        self.assertRaises(Exception, KnowledgeBase.from_file, 'foo')
+        print(kb)
 
 
 

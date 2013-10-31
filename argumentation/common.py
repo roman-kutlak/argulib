@@ -32,7 +32,7 @@ def enum(*sequential, **named):
 
 Move = enum('QUESTION', 'CLAIM', 'WHY', 'BECAUSE', 'CONCEDE', 'ASSERT')
 
-PlayerType = enum('OPONENT', 'PROPONENT')
+PlayerType = enum('OPPONENT', 'PROPONENT')
 
 
 def role_str(p):

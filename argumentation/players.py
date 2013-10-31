@@ -1,13 +1,14 @@
 import random
 
 from .common import Move, PlayerType, NoMoreMoves, IllegalArgument, IllegalMove
+from .common import role_str
 from .aal import Labelling, is_justified, oi_to_args
 
 
 class Player:
     def __init__(self, player_type):
         self.role = player_type
-        self.commitment = Labelling(None, set(), set(), set())
+        self.commitment = Labelling.empty()
 
     def __str__(self):
         return ('%s: %s' % (role_str(self.role),

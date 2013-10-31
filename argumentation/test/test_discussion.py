@@ -29,7 +29,7 @@ class GroundedDiscussionTest(unittest.TestCase):
         self.l = Labelling.grounded(self.af)
         # players
         self.p = Player(PlayerType.PROPONENT)
-        self.o = Player(PlayerType.OPONENT)
+        self.o = Player(PlayerType.OPPONENT)
 
         self.la = self.l.labelling_for(a)
         # moves
@@ -126,7 +126,7 @@ def discuss(arg=None):
     l = Labelling.grounded(af)
     d = GroundedDiscussion(l,
                            Player(PlayerType.PROPONENT),
-                           Player(PlayerType.OPONENT))
+                           Player(PlayerType.OPPONENT))
     af.save_graph()
 
     if arg is not None:
@@ -154,7 +154,7 @@ def discuss2(arg=None):
     l = Labelling.grounded(af)
     d = GroundedDiscussion(l,
                            ScepticalPlayer(PlayerType.PROPONENT),
-                           ScepticalPlayer(PlayerType.OPONENT))
+                           ScepticalPlayer(PlayerType.OPPONENT))
     af.save_graph()
 
     if arg is not None:
@@ -182,7 +182,7 @@ def discuss3(arg=None):
     l = Labelling.grounded(af)
     d = GroundedDiscussion2(l,
                            SmartPlayer(PlayerType.PROPONENT),
-                           SmartPlayer(PlayerType.OPONENT))
+                           SmartPlayer(PlayerType.OPPONENT))
     af.save_interesting_graph()
 
     if arg is not None:
@@ -207,7 +207,7 @@ def discuss3(arg=None):
 #print(discuss3('A0'))
 
 
-test_kb_path = './argumentation/test/data/UAV_1.kb.txt'
+test_kb_path = './argumentation/test/data/test.kb.txt'
 
 class DialogTest(unittest.TestCase):
     """ A test harness for the Dialog class. """
@@ -223,13 +223,28 @@ class DialogTest(unittest.TestCase):
     def test_find_rule(self):
         """ Test finding a rule with a particular conclusion. """
         d = Dialog()
-        conclusion = Literal.from_str('lvA')
+        conclusion = Literal.from_str('sa')
         self.assertEqual(None, d.find_rule(conclusion))
         d.load_kb(test_kb_path)
-        self.assertEqual(StrictRule.from_str('--> lvA'),
+        self.assertEqual(StrictRule.from_str('--> sa'),
                             d.find_rule(conclusion))
-        self.assertEqual(StrictRule.from_str('--> lvA'),
-                            d.find_rule('lvA'))
+        self.assertEqual(StrictRule.from_str('--> sa'),
+                            d.find_rule('sa'))
+        self.assertEqual(StrictRule.from_str('sa --> sb'),
+                            d.find_rule('sb'))
+
+    def test_find_argument(self):
+        """ Test finding an argument with a particular conclusion. """
+        d = Dialog()
+        conclusion = Literal.from_str('sa')
+        self.assertEqual(None, d.find_argument(conclusion))
+        d.load_kb(test_kb_path)
+        self.assertEqual(StrictRule.from_str('--> sa'),
+                            d.find_argument(conclusion).rule)
+        self.assertEqual(StrictRule.from_str('--> sa'),
+                            d.find_argument('sa').rule)
+        self.assertEqual(StrictRule.from_str('sa --> sb'),
+                            d.find_argument('sb').rule)
 
     def test_assert(self):
         """ Test adding new knowledge into the knowledge base. """
@@ -242,13 +257,100 @@ class DialogTest(unittest.TestCase):
         d.add(StrictRule.from_str('b --> c'))
         self.assertEqual(StrictRule.from_str('b --> c'), d.find_rule('c'))
 
+    def test_justify(self):
+        """ Test justifying a conclusion. """
+        msg = 'There is no argument with conclusion "b"'
+        d = Dialog(test_kb_path)
+        m = d.do_justify('b')
+        self.assertEqual(msg, m)
+
+        m = d.do_justify('sb')
+        expected = [StrictRule.from_str(x) for x in
+                        [' --> sa', ' sa --> sb']]
+        expected.sort(key=lambda x: x.name)
+        m.sort(key=lambda x: x.name)
+        self.assertEqual(expected, m)
+
+        m = d.do_justify('sc')
+        expected = [StrictRule.from_str(x) for x in
+                        ['   --> sa',
+                         '   --> sa',
+                         'sa --> sb',
+                         'sa,sb --> sc']]
+        m.sort(key=lambda x: x.name)
+        self.assertEqual(expected, m)
+
+    def test_explain(self):
+        """ Test explaining why a conclusion is not true. """
+        assertion = DefeasibleRule.from_str('==> bar')
+        rule = DefeasibleRule.from_str('bar ==> foo')
+        d = Dialog()
+
+        # dialog kb empty
+        self.assertEqual(None, d.find_rule('foo'))
+        self.assertEqual(None, d.find_argument('foo'))
+
+        # now we have a rule but there is no argument for it (no antecedant)
+        d.add('bar ==> foo')
+        self.assertEqual(rule, d.find_rule('foo'))
+        self.assertEqual(None, d.find_argument('foo'))
+        res = d.do_explain('foo')
+        self.assertEqual([Literal('bar')], res)
+
     def test_question(self):
         """ Test questionning a status of a conclusion """
+        msg = 'There is no argument with conclusion "b"'
         d = Dialog(test_kb_path)
-        self.assertEqual('IN', d.question('lvA'))
-        self.assertEqual('OUT', d.question('landA'))
-        self.assertEqual('UNDEC', d.question('landA'))
-        self.assertEqual(None, d.question('landA'))
+
+        m = d.do_question('IN', 'b')
+        self.assertEqual(msg, m)
+
+        m = d.do_question('IN', 'sb')
+        self.assertIsNotNone(m)
+        # there should be no attackers against 'sb'
+        self.assertEqual(Labelling.empty(), m[2])
+
+        m = d.do_question('OUT', '-at')
+        self.assertIsNotNone(m)
+        # there should be no attackers against 'sb'
+        self.assertEqual(StrictRule.from_str('--> at'), m[2].argument.rule)
+
+    def test_do_assert(self):
+        """ Test adding new rules. """
+        d = Dialog(test_kb_path)
+        res = d.do_assert('bad rule')
+        self.assertEqual('"bad rule" is not a valid rule', res)
+
+        self.assertEqual(None, d.find_rule('bar'))
+        res = d.do_assert('foo --> bar')
+        self.assertEqual(StrictRule.from_str('foo --> bar'),
+                        d.find_rule('bar'))
+
+    def test_parse(self):
+        """ Test parsing commands. """
+        assertion = DefeasibleRule.from_str('==> bar')
+        rule = DefeasibleRule.from_str('bar ==> foo')
+        d = Dialog()
+
+        # dialog kb empty
+        self.assertEqual(None, d.find_rule('foo'))
+        self.assertEqual(None, d.find_argument('foo'))
+
+        # now we have a rule but there is no argument for it (no antecedant)
+        d.parse('assert bar ==> foo')
+        self.assertEqual(rule, d.find_rule('foo'))
+        self.assertEqual(None, d.find_argument('foo'))
+
+        # finally have an argument
+        d.parse('assert ==> bar')
+        self.assertEqual(rule, d.find_rule('foo'))
+        self.assertEqual(rule, d.find_argument('foo').rule)
+
+        res = d.parse('why foo')
+        self.assertEqual([assertion, rule], res)
+
+        res = d.parse('why in foo')
+        self.assertEqual(Labelling.empty(), res[2])
 
 
 

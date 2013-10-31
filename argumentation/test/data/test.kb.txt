@@ -1,0 +1,25 @@
+# some strict rules
+--> sa
+sa --> sb
+sa, sb --> sc
+
+
+# some defeasible rules
+==> da
+da ==> db
+da, db ==> dc
+da, dc =(df)=> dd
+
+==> at
+==> -at
+--> at
+
+Zero: ==> zero
+One: ==> one
+Two: ==> two
+
+one < two
+
+
+# test some more complex reasoning
+

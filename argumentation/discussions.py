@@ -1,8 +1,9 @@
 #from enum import Enum
 
 from .common import *
-from .kb import KnowledgeBase, StrictRule, DefeasibleRule, Literal
-from .aal import ArgumentationFramework
+from .kb import KnowledgeBase, StrictRule, DefeasibleRule, Literal, ParseError
+from .aal import ArgumentationFramework, Labelling
+from .players import SmartPlayer, HumanPlayer
 
 
 class GroundedDiscussion:
@@ -133,7 +134,7 @@ class GroundedDiscussion:
 
     def _why(self, player, lab_arg):
         """ Challenge the status of the argument. """
-        if player.role != PlayerType.OPONENT:
+        if player.role != PlayerType.OPPONENT:
             raise NotYourMove('Only the opponent can ask "why"')
 
         if not self.proponent.is_commited_to(lab_arg):
@@ -151,7 +152,7 @@ class GroundedDiscussion:
 
     def _concede(self, player, lab_arg):
         """ Agree with the proponent on a particular labelling. """
-        if player.role != PlayerType.OPONENT:
+        if player.role != PlayerType.OPPONENT:
             raise NotYourMove('Only the opponent can "concede"')
 
         if len(self.open_issues) == 0 :
@@ -203,7 +204,7 @@ class GroundedDiscussion2(GroundedDiscussion):
 
     def _why(self, player, lab_arg):
         """ Challenge the status of the argument. """
-        if player.role != PlayerType.OPONENT:
+        if player.role != PlayerType.OPPONENT:
             raise NotYourMove('Only the opponent can ask "why"')
 
         if self.is_contradicting(lab_arg):
@@ -218,7 +219,7 @@ class GroundedDiscussion2(GroundedDiscussion):
 
     def _concede(self, player, lab_arg):
         """ Agree with the proponent on a particular labelling. """
-        if player.role != PlayerType.OPONENT:
+        if player.role != PlayerType.OPPONENT:
             raise NotYourMove('Only the opponent can "concede"')
 
         if len(self.open_issues) == 0 :
@@ -272,18 +273,17 @@ class Dialog:
     """
 
     def __init__(self, kb_path=None):
-        self.kb = KnowledgeBase()
-        self.aaf = None
-        if kb_path is not None:
-            self.load_kb(kb_path)
-            self._create_aaf()
+        self.load_kb(kb_path)
+        self.discussion = None
 
     def load_kb(self, path):
         self.kb = KnowledgeBase.from_file(path)
-        self._create_aaf()
-
-    def _create_aaf(self):
         self.aaf = ArgumentationFramework(self.kb)
+
+    def _init_discussion(self):
+        self.discussion = GroundedDiscussion2(Labelling.grounded(self.aaf),
+                            SmartPlayer(PlayerType.PROPONENT),
+                            HumanPlayer(PlayerType.OPPONENT))
 
     def find_rule(self, conclusion):
         """ Find a rule with the given conclusion.
@@ -299,6 +299,21 @@ class Dialog:
             # return the 'first' rule
             for x in rules: return x
 
+    def find_argument(self, conclusion):
+        """ Find an argument with given conclusion.
+        Return None if no such argument exists.
+        
+        """
+        if isinstance(conclusion, str):
+            conclusion = Literal.from_str(conclusion)
+        if not conclusion in self.kb._arguments:
+            return None
+        else:
+            args = self.kb._arguments[conclusion]
+            # return the 'first' rule
+            for x in args: return x
+
+    # FIXME: throw an exception if a new rule would make KB inconsistent?
     def add(self, rule):
         """ Add a rule to the knowledge base. """
         if isinstance(rule, str):
@@ -310,79 +325,85 @@ class Dialog:
                 raise ParseError('"%s" is not a valid rule' % rule)
         # rule is either a StrictRule or DefeasibleRule
         self.kb.add_rule(rule)
-
-    def do_load(self, path):
-        if path == '' :
-            msg = 'the command "load" needs a path to the KB as an argument'
-            return msg
-        self.load_kb(path)
+        self.aaf = ArgumentationFramework(self.kb)
+        self.discussion = None
 
 
+    #############  Commands #############
+
+    def do_question(self, label, conclusion):
+        """ Question the staus of an argument. """
+        if self.discussion is None: self._init_discussion()
+        arg = self.find_argument(conclusion)
+        if arg is None:
+            return ('There is no argument with conclusion "%s"' % conclusion)
+        system_lab = self.discussion.labelling.label_for(arg)
+        if system_lab != label.upper():
+            return ('The argument "%s" is labeled "%s"' % (conclusion, label))
+        d = self.discussion
+        lab_arg = Labelling.from_argument(arg, label)
+        d.move(d.opponent, Move.WHY, lab_arg)
+        move = d.proponent.make_move(d)
+        return move
 
 
+    def do_justify(self, conclusion):
+        """ Ask for the rules that make the conclusion valid. """
+        arg = self.find_argument(conclusion)
+        if arg is None:
+            return ('There is no argument with conclusion "%s"' % conclusion)
+        move = [x.rule for x in arg.subarguments]
+        return move
 
+    def do_explain(self, conclusion):
+        """ Show which antecedants are missing to achieve the conclusion. """
+        rule = self.find_rule(conclusion)
+        if rule is None:
+            return ('There is no rule with conclusion "%s"' % conclusion)
+        # find missing antecedants
+        missing = list()
+        for a in rule.antecedent:
+            r = self.find_rule(a)
+            if r is None:
+                missing.append(a)
+        return missing
 
+    def do_assert(self, rule):
+        try:
+            self.add(rule)
+        except ParseError as pe:
+            return str(pe)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def parse_command(command):
+    def parse(self, command):
         """ Parse a command from a string.
         The commands have form: 
             why in x  - discuss why is an argument with conclusion x labeled IN
             why out x - discuss why is an argument with conclusion x labeled OUT
             why p     - what reasoning lead to conclusion p
             why not p - what reasoning lead to conclusion -p
-            [concede] - should this be included?
-            [assert x]
+            assert r  - add a rule to the knowledge base
 
         """
         tmp = command.strip().split(' ')
-        print('User command: %s' % str(tmp))
-
+#        print('User command: %s' % str(tmp))
         if len(tmp) < 2:
-            raise FormatError('the command "%s" has too few arguments' % command)
+            return('the command "%s" has too few arguments' % command)
 
-        if tmp[1] == 'in' or tmp[1] == 'out':
-            return parse_argumentation_question(tmp, discussion)
-        else:
-            return parse_reasoning_question(tmp, discussion)
+        if 'why' == tmp[0]:
+            if 'IN' == tmp[1].upper() or 'OUT' == tmp[1].upper():
+                if len(tmp) < 3:
+                    return('the command "%s" has too few arguments' % command)
+                return self.do_question(tmp[1], tmp[2])
+            if 'not' == tmp[1]:
+                if len(tmp) < 3:
+                    return('the command "%s" has too few arguments' % command)
+                return self.do_explain(tmp[2])
+            return self.do_justify(tmp[1])
 
+        elif 'assert' == tmp[0]:
+            rule = ' '.join(tmp[1:]) # the rule was split, put it back together
+            return self.do_assert(rule)
 
-def parse_argumentation_question(words, discussion):
-    move_type = None
-    if   tmp[0] == 'why': move_type = Move.WHY
-    elif tmp[0] == 'concede': move_type = Move.CONCEDE
-    elif tmp[0] == 'assert': move_type = Move.ASSERT
-    else: raise IllegalMove('"%s" is not a valid move' % tmp[0])
-
-    if move_type == Move.CONCEDE:
-        return (self, move_type, discussion.open_issues[-1])
-
-    if move_type == Move.WHY:
-        if len(tmp) < 3: raise IllegalMove('"Why" requires two parameters')
-        lab = tmp[1]
-        id  = tmp[2]
-        args = list(discussion.labelling.find_arguments_with_conclusion(id))
-        args = list(map(lambda x: discussion.labelling_for(x), args))
-        if len(args) == 0:
-            raise IllegalArgument('Ther is no argument with conclusion "%s"'
-                        % tmp[2])
-        return (self, move_type, args[0])
-
-
-def parse_reasoning_question(words, discussion):
-    pass
 
 
 

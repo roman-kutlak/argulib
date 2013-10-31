@@ -25,9 +25,21 @@ class Labelling:
             self._update_UNDEC()
 
     @classmethod
+    def empty(cls):
+        """ Return new empty labelling. """
+        return cls(None, set(), set(), set())
+
+    @classmethod
     def grounded(cls, af):
         """ Return grounded labeling created from a framework. """
         return cls.all_UNDEC(af).up_complete_update()
+
+    @classmethod
+    def from_argument(cls, arg, label):
+        """ Return labelling with one argument. """
+        l = Labelling.empty()
+        l.add_arg(arg, label)
+        return l
 
     def _update_UNDEC(self):
         """Updates UNDEC so that it contains arguments not present in IN and OUT"""
@@ -191,8 +203,7 @@ class Labelling:
 
     def labelling_for(self, arg):
         lab = self.label_for(arg)
-        res = Labelling(None, set(), set(), set())
-        res.add_arg(arg, lab)
+        res = Labelling.from_argument(arg, lab)
         return res
 
     def has_single_label(self):

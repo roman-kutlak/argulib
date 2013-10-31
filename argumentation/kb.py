@@ -23,19 +23,27 @@ class RuleError(Exception):
 
 
 class Literal:
-    """ The class represents a literal (possibly negated) """
+    """ The class represents a literal (possibly negated).
+
+    The main purpose of the class is to enforce naming conventions.
+    Literals are not allowed any other characters except for alphabet + '_'.
+
+    To create a Literal instance from string use Literal.from_str(x). If
+    a literal is to be negated, the identifier should start with '-' (eg, -p).
+    The parser is not smart enough to parse "--p" as "p".
+
+    """
     def __init__(self, name, negated=False):
         """ Create a literal with a name.
-        
         Keyword arguments:
-        negated -- is the literal negated (eg not a; default false)
+        negated -- is the literal negated (eg, not a; default false)
         
         """
         self.name = name
         self.negated = negated
     
     def __eq__(self, other):
-        """ Compare two literals or a literal and a string. """
+        """ Compare with a literal or a string. """
         if isinstance(other, str):
             try:
                 other = Literal.from_str(other)
@@ -94,7 +102,7 @@ class Rule:
     def __init__(self, antecedent, consequent):
         """ A rule has to have antecedent and a consequent. 
         
-            antecedent -- a list (or equivalent) of Literals
+            antecedent -- a list of Literals
             consequent -- a Literal
         """
         self.name = ""
@@ -143,7 +151,7 @@ class StrictRule(Rule):
         super().__init__(antecedent, consequent)
 
     def __repr__(self):
-        return ("StrictRule: %s" % str(self))
+        return ('StrictRule: %s' % str(self))
     
     def __lt__(self, other):
         return False
@@ -170,11 +178,9 @@ class DefeasibleRule(Rule):
         if vulnerabilities is None:
             self.vulnerabilities = list()
         else:
-            if name is None:
-                raise RuleError("Defeasible rule has to have a name")
             for a in vulnerabilities:
                 if not isinstance(a, Literal):
-                    raise RuleError("Vulnerabilities must be list of Literals")
+                    raise RuleError('Vulnerabilities must be list of Literals')
             self.vulnerabilities = list(vulnerabilities)
             self.vulnerabilities.sort()
         self.name = name
@@ -206,7 +212,7 @@ class DefeasibleRule(Rule):
         return text
 
     def __repr__(self):
-        return ("DefeasibleRule %s: %s" % (self.name, str(self)))
+        return ('DefeasibleRule "%s": %s' % (self.name, str(self)))
 
     @classmethod
     def from_str(cls, data):
@@ -235,7 +241,7 @@ class DefeasibleRule(Rule):
 class KnowledgeBase:
     """ A class that represents the knowledge base of rules. """
 
-    def __init__(self, name="Knowledge Base"):
+    def __init__(self, name=''):
         self.name = name
         self.defeasible_rules = dict() # temporary dict for name:rule
         self.rules = dict() # actual rules
@@ -248,7 +254,7 @@ class KnowledgeBase:
     @classmethod
     def from_file(cls, file_name):
         if file_name is None:
-            return None
+            return cls()
         kb = cls(file_name)
         kb.read_file(file_name)
         kb.order() # order before computing transpositions
@@ -311,7 +317,7 @@ class KnowledgeBase:
             for tp in rules:
                 rules_to_add.append(tp)
         for r in rules_to_add:
-            self.add_rule(r)
+            self.add_rule(r, recalc=False)
 
     def check_consistency(self):
         pass
@@ -327,13 +333,15 @@ class KnowledgeBase:
                     break
                 w += 1
 
-    def add_rule(self, rule):
+    def add_rule(self, rule, recalc=True):
         if rule.consequent not in self.rules:
             rules = set()
             rules.add(rule)
             self.rules[rule.consequent] = rules
         else:
             self.rules[rule.consequent].add(rule)
+        # re-compute arguments...
+        if recalc: self.construct_arguments()
 
     def get_rule(self, name):
         for r in self.get_rules():
@@ -341,11 +349,15 @@ class KnowledgeBase:
                 return r
     
     def construct_arguments(self):
+#        print()
+        self._arguments = defaultdict(set)
         old_size = -1
+        rules = list(self.get_rules())
+        rules.sort(key=lambda x: x.name)
         while (old_size != seq_len(self.arguments)):
             # how many proofs we are starting from in this iteration
             old_size = seq_len(self.arguments)
-            for r in self.get_rules():
+            for r in rules:
 #                print('Current rule %s' % repr(r))
                 proofs = dict()
                 for a in r.antecedent:
@@ -384,7 +396,7 @@ class KnowledgeBase:
                 return
 
         a = Argument(name, rule, prfs)
-        print('....... adding %s' % str(a))
+#        print('..... adding %s' % str(a))
         self._arguments[rule.consequent].add(a)
 
     @property
@@ -398,7 +410,7 @@ class KnowledgeBase:
             rule = StrictRule.from_str(string)
             if (rule.name == ""):
                 rule.name = self.generate_str_rule_name(rule)
-            self.add_rule(rule)
+            self.add_rule(rule, recalc=False)
         except Exception as e:
             print('CSR: Exception: %s' % e)
 
@@ -413,7 +425,7 @@ class KnowledgeBase:
                     'Two different defeasible rules with same the name: %s'
                      % rule.name)
             self.defeasible_rules[rule.name] = rule
-            self.add_rule(rule)
+            self.add_rule(rule, recalc=False)
         except Exception as e:
             print('CDR: Exception: %s' % e)
 
@@ -490,12 +502,9 @@ class KnowledgeBase:
 
 
 class Argument:
-    """ Argument - based on Mikolaj Podlaszewsi's code. """
+    """ Argument - based on Mikolaj Podlaszewski's code. """
     
     def __init__(self, name, rule, arguments):
-#        print('constructing argument %s for rule %s' % (name, str(rule)))
-#        if rule.consequent == Literal('b'):
-#            pdb.set_trace()
         self._framework = None
         self.name = name
         self.rule = rule
