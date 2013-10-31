@@ -285,6 +285,15 @@ class Dialog:
                             SmartPlayer(PlayerType.PROPONENT),
                             HumanPlayer(PlayerType.OPPONENT))
 
+    def is_accepted_conclusion(self, conclusion):
+        """Return true if there is an argument with the conclusion and it is IN.
+        """
+        if self.discussion is None: self._init_discussion()
+        arg = self.find_argument(conclusion)
+        if arg is not None and self.discussion.labelling.label_for(arg) == 'IN':
+            return True
+        return False
+
     def find_rule(self, conclusion):
         """ Find a rule with the given conclusion.
         Return None if no such rule exists.
@@ -339,12 +348,13 @@ class Dialog:
             return ('There is no argument with conclusion "%s"' % conclusion)
         system_lab = self.discussion.labelling.label_for(arg)
         if system_lab != label.upper():
-            return ('The argument "%s" is labeled "%s"' % (conclusion, label))
+            return ('The argument "%s" is labeled "%s" and not "%s"' % (conclusion, system_lab, label))
         d = self.discussion
         lab_arg = Labelling.from_argument(arg, label)
         d.move(d.opponent, Move.WHY, lab_arg)
         move = d.proponent.make_move(d)
-        return move
+        if move is not None: self.discussion.move(*move)
+        return move[2].argument.rule
 
 
     def do_justify(self, conclusion):
