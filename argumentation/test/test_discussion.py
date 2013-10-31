@@ -3,7 +3,9 @@ import unittest
 from argumentation.common import Move, PlayerType
 from argumentation.common import IllegalMove, NoMoreMoves, NotYourMove
 from argumentation.discussions import GroundedDiscussion, GroundedDiscussion2
-from argumentation.kb import KnowledgeBase, Argument, StrictRule, DefeasibleRule
+from argumentation.discussions import Dialog
+from argumentation.kb import KnowledgeBase, Argument
+from argumentation.kb import  StrictRule, DefeasibleRule, Literal
 from argumentation.aal import ArgumentationFramework, Labelling
 from argumentation.players import Player, SmartPlayer, ScepticalPlayer
 
@@ -202,20 +204,53 @@ def discuss3(arg=None):
 
     return d
 
-print(discuss3('A0'))
+#print(discuss3('A0'))
 
 
+test_kb_path = './argumentation/test/data/UAV_1.kb.txt'
 
-#Traceback (most recent call last):
-#  File "/Users/roman/Work/software/Sassy/sassy/ui/gui.py", line 280, in handle_dialog
-#    resp = discussion.proponent.make_move(discussion)
-#  File "sassyargumentation/argumentation/players.py", line 39, in make_move
-#    return self._answer_why(discussion, lab_arg)
-#  File "sassyargumentation/argumentation/players.py", line 181, in _answer_why
-#    attacker = discussion.labelling.find_lowest_step(attackers)
-#  File "sassyargumentation/argumentation/aal.py", line 248, in find_lowest_step
-#    return args[0][1]
-#IndexError: list index out of range
+class DialogTest(unittest.TestCase):
+    """ A test harness for the Dialog class. """
+
+    def test_load(self):
+        """ Test constructing a new Dialog instance and loading a KB. """
+        d = Dialog()
+        self.assertIsNotNone(d)
+        d = Dialog(test_kb_path)
+        self.assertIsNotNone(d)
+        self.assertRaises(Exception, lambda: Dialog(''))
+
+    def test_find_rule(self):
+        """ Test finding a rule with a particular conclusion. """
+        d = Dialog()
+        conclusion = Literal.from_str('lvA')
+        self.assertEqual(None, d.find_rule(conclusion))
+        d.load_kb(test_kb_path)
+        self.assertEqual(StrictRule.from_str('--> lvA'),
+                            d.find_rule(conclusion))
+        self.assertEqual(StrictRule.from_str('--> lvA'),
+                            d.find_rule('lvA'))
+
+    def test_assert(self):
+        """ Test adding new knowledge into the knowledge base. """
+        d = Dialog()
+        self.assertEqual(None, d.find_rule('b'))
+        # test adding a rule from string
+        d.add(' a --> b ')
+        self.assertEqual(StrictRule.from_str('a --> b'), d.find_rule('b'))
+        # test adding a rule as a Rule instance
+        d.add(StrictRule.from_str('b --> c'))
+        self.assertEqual(StrictRule.from_str('b --> c'), d.find_rule('c'))
+
+    def test_question(self):
+        """ Test questionning a status of a conclusion """
+        d = Dialog(test_kb_path)
+        self.assertEqual('IN', d.question('lvA'))
+        self.assertEqual('OUT', d.question('landA'))
+        self.assertEqual('UNDEC', d.question('landA'))
+        self.assertEqual(None, d.question('landA'))
+
+
 
 if __name__ == '__main__':
     unittest.main()

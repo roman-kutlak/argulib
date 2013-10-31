@@ -1,6 +1,8 @@
 #from enum import Enum
 
 from .common import *
+from .kb import KnowledgeBase, StrictRule, DefeasibleRule, Literal
+from .aal import ArgumentationFramework
 
 
 class GroundedDiscussion:
@@ -228,6 +230,92 @@ class GroundedDiscussion2(GroundedDiscussion):
         self._concede_upto(lab_arg)
 
 
+class SimpleDiscussion(GroundedDiscussion):
+    Debug = False
+
+    def _because(self, player, lab_arg):
+        if self.Debug: print('appending "because %s"' % lab_arg)
+        self.open_issues.append(lab_arg)
+        self.moves.append( (player, Move.BECAUSE, lab_arg) )
+
+    def _why(self, player, lab_arg):
+        """ Challenge the status of the argument. """
+        if not self.is_oi(lab_arg):
+            self.open_issues.append(lab_arg)
+
+        if self.Debug: print('appending "why %s"' % lab_arg)
+        self.moves.append( (player, Move.WHY, lab_arg) )
+
+    def _concede(self, player, lab_arg):
+        """ Agree with the proponent on a particular labelling. """
+        # chech that player is conceding to the last open issue
+        if self.Debug: print('appending "concede %s"' % lab_arg)
+        self.moves.append( (player, Move.CONCEDE, lab_arg) )
+        self._concede_upto(lab_arg)
+
+
+
+
+
+
+
+
+
+class Dialog:
+    """ A class for supporting a dialog between the user and the computer.
+    The class is responsible for parsing commands, updating a knowledge base,
+    presenting arguments and reasoning.
+    
+    The methods for handling commands start with do_
+    (same as in Python's cmd.Cmd).
+    
+    """
+
+    def __init__(self, kb_path=None):
+        self.kb = KnowledgeBase()
+        self.aaf = None
+        if kb_path is not None:
+            self.load_kb(kb_path)
+            self._create_aaf()
+
+    def load_kb(self, path):
+        self.kb = KnowledgeBase.from_file(path)
+        self._create_aaf()
+
+    def _create_aaf(self):
+        self.aaf = ArgumentationFramework(self.kb)
+
+    def find_rule(self, conclusion):
+        """ Find a rule with the given conclusion.
+        Return None if no such rule exists.
+        
+        """
+        if isinstance(conclusion, str):
+            conclusion = Literal.from_str(conclusion)
+        if not conclusion in self.kb.rules:
+            return None
+        else:
+            rules = self.kb.rules[conclusion]
+            # return the 'first' rule
+            for x in rules: return x
+
+    def add(self, rule):
+        """ Add a rule to the knowledge base. """
+        if isinstance(rule, str):
+            if '->' in rule:
+                rule = StrictRule.from_str(rule)
+            elif '=>' in rule:
+                rule = DefeasibleRule.from_str(rule)
+            else:
+                raise ParseError('"%s" is not a valid rule' % rule)
+        # rule is either a StrictRule or DefeasibleRule
+        self.kb.add_rule(rule)
+
+    def do_load(self, path):
+        if path == '' :
+            msg = 'the command "load" needs a path to the KB as an argument'
+            return msg
+        self.load_kb(path)
 
 
 
@@ -245,6 +333,56 @@ class GroundedDiscussion2(GroundedDiscussion):
 
 
 
+
+
+
+    def parse_command(command):
+        """ Parse a command from a string.
+        The commands have form: 
+            why in x  - discuss why is an argument with conclusion x labeled IN
+            why out x - discuss why is an argument with conclusion x labeled OUT
+            why p     - what reasoning lead to conclusion p
+            why not p - what reasoning lead to conclusion -p
+            [concede] - should this be included?
+            [assert x]
+
+        """
+        tmp = command.strip().split(' ')
+        print('User command: %s' % str(tmp))
+
+        if len(tmp) < 2:
+            raise FormatError('the command "%s" has too few arguments' % command)
+
+        if tmp[1] == 'in' or tmp[1] == 'out':
+            return parse_argumentation_question(tmp, discussion)
+        else:
+            return parse_reasoning_question(tmp, discussion)
+
+
+def parse_argumentation_question(words, discussion):
+    move_type = None
+    if   tmp[0] == 'why': move_type = Move.WHY
+    elif tmp[0] == 'concede': move_type = Move.CONCEDE
+    elif tmp[0] == 'assert': move_type = Move.ASSERT
+    else: raise IllegalMove('"%s" is not a valid move' % tmp[0])
+
+    if move_type == Move.CONCEDE:
+        return (self, move_type, discussion.open_issues[-1])
+
+    if move_type == Move.WHY:
+        if len(tmp) < 3: raise IllegalMove('"Why" requires two parameters')
+        lab = tmp[1]
+        id  = tmp[2]
+        args = list(discussion.labelling.find_arguments_with_conclusion(id))
+        args = list(map(lambda x: discussion.labelling_for(x), args))
+        if len(args) == 0:
+            raise IllegalArgument('Ther is no argument with conclusion "%s"'
+                        % tmp[2])
+        return (self, move_type, args[0])
+
+
+def parse_reasoning_question(words, discussion):
+    pass
 
 
 

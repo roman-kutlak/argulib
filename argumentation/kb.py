@@ -1,7 +1,9 @@
 import copy
 from collections import defaultdict
 
+import pyparsing
 from pyparsing import Word, Group, Optional, alphanums, alphas, delimitedList
+
 
 """ Structures and functions for reading a knowledge base of rules for 
     constructing argument networks. 
@@ -33,7 +35,15 @@ class Literal:
         self.negated = negated
     
     def __eq__(self, other):
-        return (self.name == other.name and self.negated == other.negated)
+        """ Compare two literals or a literal and a string. """
+        if isinstance(other, str):
+            try:
+                other = Literal.from_str(other)
+            except Exception:
+                return false
+        return (isinstance(other, Literal) and
+                self.name == other.name and
+                self.negated == other.negated)
     
     def __lt__(self, other):
         if self.name == other.name:
@@ -59,21 +69,21 @@ class Literal:
 
     @classmethod
     def from_str(cls, data):
-        try:
-            if isinstance(data, str):
-                parsed = literal.parseString(data)
+        if isinstance(data, str):
+            data = data.strip()
+            try:
+                parsed = literal.parseString(data, parseAll=True)
                 params = parsed[0]
-            else:
-                params = data
-            if (len(params) == 1):
-                return cls(params[0])
-            elif (len(params) == 2):
-                return cls(params[1], True)
-            else:
-                raise ParseError('Data mallformed: "%s"' % data)
-        except Exception as e:
-            raise ParseError('"%s" is not a valid Literal\n\toriginal error: %s'
-                             % (data, str(e)))
+            except pyparsing.ParseException as ex:
+                raise ParseError(str(ex))
+        else:
+            params = data
+        if (len(params) == 1):
+            return cls(params[0])
+        elif (len(params) == 2):
+            return cls(params[1], True)
+        else:
+            raise ParseError('Data mallformed: "%s"' % data)
 
 
 class Rule:
@@ -104,7 +114,8 @@ class Rule:
             self.consequent = consequent
 
     def __eq__(self, other):
-        return (self.antecedent == other.antecedent and
+        return (isinstance(other, Rule) and
+                self.antecedent == other.antecedent and
                 self.consequent == other.consequent)
     
     def __len__(self):
@@ -140,7 +151,7 @@ class StrictRule(Rule):
     @classmethod
     def from_str(cls, data):
         try:
-            parsed = strict_rule.parseString(data)
+            parsed = strict_rule.parseString(data, parseAll=True)
             antecedent = None
             if 'antecedent' in parsed:
                 antecedent = list(map(Literal.from_str, parsed['antecedent']))
@@ -170,7 +181,7 @@ class DefeasibleRule(Rule):
         self.weight = 0
 
     def __eq__(self, other):
-        return (self.name == other.name and
+        return (isinstance(other, DefeasibleRule) and
                 self.vulnerabilities == other.vulnerabilities and
                 super().__eq__(other))
 
@@ -200,7 +211,7 @@ class DefeasibleRule(Rule):
     @classmethod
     def from_str(cls, data):
         try:
-            parsed = defeasible_rule.parseString(data)
+            parsed = defeasible_rule.parseString(data, parseAll=True)
             if 'name' in parsed:
                 name = parsed['name']
             else:
@@ -578,7 +589,7 @@ literals = delimitedList(literal)
 antecedent = literals
 vulnerabilities = literals
 consequent = literal
-ruleName = Word(alphanums)
+ruleName = Word(alphanums + '_')
 ruleNames = delimitedList(ruleName)
 
 strict_rule = Optional(
