@@ -5,7 +5,7 @@ from argumentation.common import IllegalMove, NoMoreMoves, NotYourMove
 from argumentation.discussions import GroundedDiscussion, GroundedDiscussion2
 from argumentation.discussions import Dialog
 from argumentation.kb import KnowledgeBase, Argument
-from argumentation.kb import  StrictRule, DefeasibleRule, Literal
+from argumentation.kb import  Rule, StrictRule, DefeasibleRule, Literal
 from argumentation.aal import ArgumentationFramework, Labelling
 from argumentation.players import Player, SmartPlayer, ScepticalPlayer
 
@@ -308,7 +308,7 @@ class DialogTest(unittest.TestCase):
         m = d.do_question('IN', 'sb')
         self.assertIsNotNone(m)
         # there should be no attackers against 'sb'
-        self.assertEqual(Labelling.empty(), m[2])
+        self.assertEqual('The argument "sb" has no attackers.', m)
 
         m = d.do_question('OUT', '-at')
         self.assertIsNotNone(m)
@@ -325,6 +325,18 @@ class DialogTest(unittest.TestCase):
         res = d.do_assert('foo --> bar')
         self.assertEqual(StrictRule.from_str('foo --> bar'),
                         d.find_rule('bar'))
+
+    def test_do_retract(self):
+        """ Test removing rules. """
+        d = Dialog()
+        res = d.do_retract(Rule.from_str('foo --> bar'))
+        msg = 'no rule "foo --> bar" found'
+        self.assertEqual(msg, res)
+        d.do_assert('foo --> bar')
+        res = d.do_retract(Rule.from_str('foo --> bar'))
+        msg = 'rule "foo --> bar" deleted'
+        self.assertEqual(msg, res)
+
 
     def test_parse(self):
         """ Test parsing commands. """
@@ -350,7 +362,7 @@ class DialogTest(unittest.TestCase):
         self.assertEqual([assertion, rule], res)
 
         res = d.parse('why in foo')
-        self.assertEqual(Labelling.empty(), res[2])
+        self.assertEqual('The argument "foo" has no attackers.', res)
 
 
 

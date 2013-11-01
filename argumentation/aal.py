@@ -48,6 +48,7 @@ class Labelling:
 
 
     def __eq__(self, other):
+        if not isinstance(other, Labelling): return False
         return (self.IN == other.IN and
                 self.OUT == other.OUT and
                 self.UNDEC == other.UNDEC)

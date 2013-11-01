@@ -189,6 +189,7 @@ class GroundedDiscussion2(GroundedDiscussion):
             raise IllegalMove('There are no open issues, play "claim" first')
 
         if self.moves[-1][1] == Move.BECAUSE :
+            print(self.moves)
             raise IllegalMove('Cannot play "because" twice in a row')
 
         if self.is_oi(lab_arg) :
@@ -268,7 +269,9 @@ class Dialog:
     presenting arguments and reasoning.
     
     The methods for handling commands start with do_
-    (same as in Python's cmd.Cmd).
+    (same as in Python's cmd.Cmd). As the class represents a dialog, the answers
+    from do_ are strings. Any reasonable exceptions are handled inside the class
+    and errors are returned as strings.
     
     """
 
@@ -337,6 +340,21 @@ class Dialog:
         self.aaf = ArgumentationFramework(self.kb)
         self.discussion = None
 
+    def delete(self, rule):
+        """ Remove a rule from the knowledge base. """
+        if isinstance(rule, str):
+            if '->' in rule:
+                rule = StrictRule.from_str(rule)
+            elif '=>' in rule:
+                rule = DefeasibleRule.from_str(rule)
+            else:
+                raise ParseError('"%s" is not a valid rule' % rule)
+        res = self.kb.del_rule(rule)
+        if res:
+            self.aaf = ArgumentationFramework(self.kb)
+            self.discussion = None
+        return res
+
 
     #############  Commands #############
 
@@ -348,14 +366,24 @@ class Dialog:
             return ('There is no argument with conclusion "%s"' % conclusion)
         system_lab = self.discussion.labelling.label_for(arg)
         if system_lab != label.upper():
-            return ('The argument "%s" is labeled "%s" and not "%s"' % (conclusion, system_lab, label))
+            return ('The argument "%s" is labeled "%s" and not "%s"' %
+                    (conclusion, system_lab, label))
         d = self.discussion
         lab_arg = Labelling.from_argument(arg, label)
         d.move(d.opponent, Move.WHY, lab_arg)
         move = d.proponent.make_move(d)
-        if move is not None: self.discussion.move(*move)
-        return move[2].argument.rule
-
+        try:
+            if move is not None: self.discussion.move(*move)
+        except IllegalMove:
+            pass
+        if move is not None:
+            if move[2] == Labelling.empty():
+                return ('There are no arguments against "%s".'
+                            % str(conclusion))
+            rule = move[2].argument.rule
+            return str(rule)
+        else:
+            return 'ok'
 
     def do_justify(self, conclusion):
         """ Ask for the rules that make the conclusion valid. """
@@ -363,26 +391,55 @@ class Dialog:
         if arg is None:
             return ('There is no argument with conclusion "%s"' % conclusion)
         move = [x.rule for x in arg.subarguments]
-        return move
+        return str(move)
 
     def do_explain(self, conclusion):
         """ Show which antecedants are missing to achieve the conclusion. """
         rule = self.find_rule(conclusion)
         if rule is None:
             return ('There is no rule with conclusion "%s"' % conclusion)
+        # check that it is actually not true
+        arg = self.find_argument(conclusion)
+        if arg is not None:
+            return ('The proposition "%s" is true' % conclusion)
         # find missing antecedants
         missing = list()
         for a in rule.antecedent:
             r = self.find_rule(a)
             if r is None:
                 missing.append(a)
-        return missing
+        return str(missing)
 
     def do_assert(self, rule):
+        if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
+            rule = '==> ' + rule
         try:
             self.add(rule)
+            return 'Rule "%s" added.' % str(rule)
         except ParseError as pe:
             return str(pe)
+
+    def do_retract(self, rule):
+        if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
+            rule = '==> ' + rule
+        try:
+            res = self.delete(rule)
+            if res:
+                return 'rule "%s" deleted' % str(rule)
+            else:
+                return 'no rule "%s" found' % str(rule)
+        except Exception as e:
+            return str(e)
+
+    def do_print_aaf(self):
+        """ Return the string representing the current argumentation framework.
+        """
+        return str(self.aaf)
+
+    def do_print_kb(self):
+        """ Return the string representing the current knowledge base.
+        """
+        return str(self.kb)
 
     def parse(self, command):
         """ Parse a command from a string.
@@ -392,6 +449,8 @@ class Dialog:
             why p     - what reasoning lead to conclusion p
             why not p - what reasoning lead to conclusion -p
             assert r  - add a rule to the knowledge base
+            print af  - print argumentation framework
+            pring kb  - print knowledge base
 
         """
         tmp = command.strip().split(' ')
@@ -413,6 +472,15 @@ class Dialog:
         elif 'assert' == tmp[0]:
             rule = ' '.join(tmp[1:]) # the rule was split, put it back together
             return self.do_assert(rule)
+
+        elif 'retract' == tmp[0]:
+            rule = ' '.join(tmp[1:])
+            return self.do_retract(rule)
+
+        elif 'print' == tmp[0]:
+            if 'kb'   == tmp[1].strip().lower(): return self.do_print_kb()
+            elif 'af' == tmp[1].strip().lower(): return self.do_print_aaf()
+            else: return 'Unknown parameter "%s"' % tmp[1]
 
 
 

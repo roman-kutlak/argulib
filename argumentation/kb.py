@@ -144,6 +144,18 @@ class Rule:
     def __repr__(self):
         return ("Rule: %s" % str(self))
 
+    @classmethod
+    def from_str(Klass, rule):
+        if isinstance(rule, str):
+            if '->' in rule:
+                rule = StrictRule.from_str(rule)
+            elif '=>' in rule:
+                rule = DefeasibleRule.from_str(rule)
+            else:
+                raise ParseError('"%s" is not a valid rule' % rule)
+            return rule
+        return None
+
 
 class StrictRule(Rule):
     """ A strict rule is essentially the same as the Rule. """
@@ -334,6 +346,8 @@ class KnowledgeBase:
                 w += 1
 
     def add_rule(self, rule, recalc=True):
+        """ Add a new rule to the knowledge base. """
+        if not isinstance(rule, Rule): raise TypeError()
         if rule.consequent not in self.rules:
             rules = set()
             rules.add(rule)
@@ -343,10 +357,33 @@ class KnowledgeBase:
         # re-compute arguments...
         if recalc: self.construct_arguments()
 
+    def rule_with_consequent(self, consequent):
+        """ Return a rule with the given consequent or None. """
+        if isinstance(consequent, str):
+            consequent = Literal.from_str(consequent)
+        if consequent not in self.rules:
+            return None
+        else:
+            for r in self.rules[consequent]: return r
+
+    def del_rule(self, rule):
+        """ Remove a rule from the knowledge base. 
+        Returns True on success, False if no such rule found.
+        """
+        if not isinstance(rule, Rule): raise TypeError()
+        if rule.consequent not in self.rules: return False
+        rules = self.rules[rule.consequent]
+        if rule not in rules: return False
+        rules.remove(rule)
+        self.construct_arguments()
+        return True
+
     def get_rule(self, name):
+        """ Return a rule with given name or None. """
         for r in self.get_rules():
             if r.name == name:
                 return r
+        return None
     
     def construct_arguments(self):
 #        print()

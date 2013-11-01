@@ -123,6 +123,7 @@ class TestArgument(unittest.TestCase):
         pass
 
 
+# TODO: add type checking to the KnowledgeBase
 class TestKb(unittest.TestCase):
     """ Tests for KnowledgeBase functionality. """
 
@@ -134,6 +135,17 @@ class TestKb(unittest.TestCase):
         self.assertRaises(Exception, KnowledgeBase.from_file, 'foo')
         print(kb)
 
+    def test_del_rule(self):
+        """ Test removing a rule. """
+        kb = KnowledgeBase()
+        r = kb.rule_with_consequent('bar')
+        self.assertEqual(None, r)
+        kb.add_rule(Rule.from_str('foo --> bar'))
+        r = kb.rule_with_consequent('bar')
+        self.assertEqual(Rule.from_str('foo --> bar'), r)
+        kb.del_rule(Rule.from_str('foo --> bar'))
+        r = kb.rule_with_consequent('bar')
+        self.assertEqual(None, r)
 
 
 # if the module is loaded on its own, run the test
