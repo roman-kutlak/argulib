@@ -397,7 +397,11 @@ class Dialog:
         """ Show which antecedants are missing to achieve the conclusion. """
         rule = self.find_rule(conclusion)
         if rule is None:
-            return ('There is no rule with conclusion "%s"' % conclusion)
+            rule = self.find_rule('-' + conclusion)
+            if rule is None:
+                return ('There is no rule with conclusion "%s"' % conclusion)
+            else:
+                return self.do_justify(rule.consequent)
         # check that it is actually not true
         arg = self.find_argument(conclusion)
         if arg is not None:
@@ -471,7 +475,9 @@ class Dialog:
             return('the command "%s" has too few arguments' % command)
 
         if 'why' == tmp[0]:
-            if 'IN' == tmp[1].upper() or 'OUT' == tmp[1].upper():
+            if ('IN' == tmp[1].upper() or
+               'OUT' == tmp[1].upper() or
+               'UNDEC' == tmp[1].upper()):
                 if len(tmp) < 3:
                     return('the command "%s" has too few arguments' % command)
                 return self.do_question(tmp[1], tmp[2])
