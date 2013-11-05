@@ -363,7 +363,7 @@ class Dialog:
         if self.discussion is None: self._init_discussion()
         arg = self.find_argument(conclusion)
         if arg is None:
-            return ('There is no argument with conclusion "%s"' % conclusion)
+            return self.do_explain(conclusion)
         system_lab = self.discussion.labelling.label_for(arg)
         if system_lab != label.upper():
             return ('The argument "%s" is labeled "%s" and not "%s"' %
@@ -408,7 +408,19 @@ class Dialog:
             r = self.find_rule(a)
             if r is None:
                 missing.append(a)
-        return str(missing)
+        if missing != []:
+            return 'The following conditions are not fulfilled: ' + str(missing)
+
+        # probably defeasible rule that was undercut
+        missing = list()
+        for a in rule.vulnerabilities:
+            r = self.find_rule(-a)
+            if r is None:
+                missing.append(a)
+        if missing == []:
+            return 'No idea'
+        return ('The following conditions prevent concluding %s: ' % conclusion
+                    + str(missing))
 
     def do_assert(self, rule):
         if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
