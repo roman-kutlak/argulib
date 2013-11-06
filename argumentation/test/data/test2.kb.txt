@@ -1,0 +1,28 @@
+# test case for discussion
+
+==> undec
+==> -undec
+
+undec ==> -out_left
+-undec ==> -out_left
+
+--> in_left
+in_left --> -out_left
+
+==> out_left
+
+out_left ==> -in_main
+
+in_left, in_mid ==> in_main
+
+out_right ==> -in_main
+
+--> in_little
+
+in_little ==> -out_little
+
+out_little ==> out_right
+
+in_little ==> in_mid
+
+out_left ==> -in_mid

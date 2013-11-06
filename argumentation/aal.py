@@ -121,6 +121,19 @@ class Labelling:
         """ Return labelling where all arguments are labelled as UNDEC. """
         return cls(af, set(), set(), set(af.arguments))
 
+    @classmethod
+    def inverse(cls, labelling):
+        """ Create labelling for single argument where the labe is inverse. """
+        lab = labelling.label
+        arg = labelling.argument
+        if 'OUT' == lab: inv_lab = 'IN'
+        elif 'IN' == lab: inv_lab = 'OUT'
+        else: inv_lab = 'UNDEC'
+
+        l = Labelling.empty()
+        l.add_arg(arg, inv_lab)
+        return l
+
     #Operations on labellings
     def intersection(self, other):
         lab = copy.deepcopy(self)
@@ -298,7 +311,11 @@ class Labelling:
             counter += 1
             legally_IN = set([a for a in self.UNDEC if self.isLegallyIN(a)])
             legally_OUT = set([a for a in self.UNDEC if self.isLegallyOUT(a)])
-            if not legally_IN and not legally_OUT: return self
+            if not legally_IN and not legally_OUT:
+                for a in self.UNDEC:
+                    if a not in self.steps:
+                        self.steps[a] = counter
+                return self
             self.IN |= legally_IN
             self.OUT |= legally_OUT
             self.UNDEC -= legally_IN
@@ -376,7 +393,6 @@ def assign_label_from(labelling, arg):
 def is_justified(lab_arg, labelling):
     """ Return true if the label is justified by the given labelling """
     if (len(lab_arg) == 0): return True # empty labelling
-    if (lab_arg.argument.minus == set()): return True # not attackers
     return (lab_arg.label == assign_label_from(labelling, lab_arg.argument))
 
 
@@ -482,7 +498,7 @@ class ArgumentationFramework:
             name = ''
             if self.kb is not None: name = self.kb.name
             G.graph_attr['label']="Argumentation Framework from KB\n'%s'" % name
-            G.node_attr['shape']='circle'
+            G.node_attr['shape']='oval'
             G.edge_attr['color']='blue'
             l = Labelling.grounded(self)
 

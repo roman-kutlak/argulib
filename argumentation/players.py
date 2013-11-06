@@ -1,7 +1,7 @@
 import random
 
-from .common import Move, PlayerType, NoMoreMoves, IllegalArgument, IllegalMove
-from .common import role_str
+from .common import Move, PlayerType, role_str
+from .common import NoMoreMoves, IllegalArgument, IllegalMove, Disagree
 from .aal import Labelling, is_justified, oi_to_args
 
 
@@ -42,10 +42,12 @@ class Player:
             return self._answer_because(discussion, lab_arg)
         elif move_type == Move.CONCEDE:
             return self._answer_concede(discussion, lab_arg)
+        elif move_type == Move.RETRACT:
+            return None
 
     def _answer_because(self, discussion, lab_arg):
         """ React on 'because.' """
-        return self._ask_why_or_concede(discussion)
+        return self._ask_why_or_concede(discussion, lab_arg)
 
     def _answer_why(self, discussion, lab_arg):
         """ Answer 'why' question. """
@@ -62,11 +64,11 @@ class Player:
             return None
         # if there are any more open issues, discuss them
         if len(discussion.open_issues) > 0:
-            return self._ask_why_or_concede(discussion)
+            return self._ask_why_or_concede(discussion, lab_arg)
         else:
             raise NoMoreMoves()
 
-    def _ask_why_or_concede(self, discussion):
+    def _ask_why_or_concede(self, discussion, lab_arg):
         """ Ask about a reason for labeling the LOI the way it was labeled. """
         loi = discussion.open_issues[-1]
         # if  we agree with the label, accept it
@@ -87,10 +89,10 @@ class Player:
         """ Return attackers of an argument that are not open issues. """
         attackers = lab_arg.argument.minus - oi_to_args(discussion.open_issues)
         attackers = map(discussion.labelling.labelling_for, attackers)
-        # filter out irrelevant attackers ie attackers with same label or UNDEC
-        attackers = list(filter(lambda x:
-            x.label != 'UNDEC' or x.label != lab_arg.label, attackers))
-        return attackers
+        # filter out irrelevant attackers
+        if 'OUT' == lab_arg.label:
+            attackers = list(filter(lambda x: x.label != 'OUT', attackers))
+        return list(attackers)
     
     def _agree_on_label_or_rise(self, labelling, lab_arg):
         # first check that we agree on the label
@@ -147,7 +149,7 @@ class HumanPlayer(Player):
 class ScepticalPlayer(Player):
     """ A player that keeps asking WHY unless an argument has no attackers. """
     
-    def _ask_why_or_concede(self, discussion):
+    def _ask_why_or_concede(self, discussion, lab_arg):
         """ Ask about a reason for labeling the LOI the way it was labeled. """
         loi = discussion.open_issues[-1]
         if is_justified(loi, self.commitment):
@@ -172,10 +174,16 @@ class SmartPlayer(Player):
             self.update_commitment(lab_arg)
 
         # if we need more reasons, ask about the LOI, otherwise CONCEDE
-        return self._ask_why_or_concede(discussion);
+        return self._ask_why_or_concede(discussion, lab_arg);
 
     def _answer_why(self, discussion, lab_arg):
         """ React to 'why' question by giving a reason or failing. """
+        # do we agree on the label?
+        player_label = lab_arg.label
+        real_label = discussion.labelling.label_for(lab_arg.argument)
+        if real_label != player_label:
+            return (self, Move.DISAGREE, lab_arg)
+
         loi = discussion.open_issues[-1] # == lab_arg
         attackers = self._possible_attackers(discussion, loi)
         # now select the attacker with the lowest step?
@@ -185,24 +193,46 @@ class SmartPlayer(Player):
         self.update_commitment(attacker)
         return (self, Move.BECAUSE, attacker)
 
-    def _ask_why_or_concede(self, discussion):
+    def _ask_why_or_concede(self, discussion, lab_arg):
         """ Ask about a reason for labeling the LOI the way it was labeled. """
         loi = discussion.open_issues[-1]
         if is_justified(loi, self.commitment):
             self.update_commitment(loi)
+            print('the conclusion is justified')
             return (self, Move.CONCEDE, loi)
-        attackers = self._possible_attackers(discussion, loi)
-        # remove the ones the player believes in
-        attackers = list(filter(lambda x:
-            not x.argument in self.commitment.arguments, attackers))
-        # now select the attacker with the lowest step?
-        attacker = discussion.labelling.find_lowest_step(attackers)
-
-        if attacker.argument.minus == set():
-            self.update_commitment(loi)
-            return (self, Move.CONCEDE, loi)
+        # do we agree?
+        player_label = lab_arg.label
+        real_label = discussion.labelling.label_for(lab_arg.argument)
+        if real_label != player_label:
+            # if we disagree and the argument has no attackers, just say so
+            if len(lab_arg.argument.minus) == 0:
+                return (self, Move.DISAGREE, lab_arg)
+            else:
+                attackers = self._possible_attackers(discussion, loi)
+                # remove the ones the player believes in
+                attackers = list(filter(lambda x:
+                    not x.argument in self.commitment.arguments, attackers))
+                    # this should not happen, should it?
+                if len(attackers) == 0:
+                    return (self, Move.DISAGREE, lab_arg)
+                # now select the attacker with the lowest step?
+                attacker = discussion.labelling.find_lowest_step(attackers)
+                # now ask why opposite should be true
+                return (self, Move.WHY, Labelling.inverse(attacker))
+        # proposed label matches expected label
         else:
-            return (self, Move.WHY, attacker)
+            attackers = self._possible_attackers(discussion, loi)
+            # remove the ones the player believes in
+            attackers = list(filter(lambda x:
+                not x.argument in self.commitment.arguments, attackers))
+            # now select the attacker with the lowest step?
+            attacker = discussion.labelling.find_lowest_step(attackers)
+
+            if attacker.argument.minus == set():
+                self.update_commitment(loi)
+                return (self, Move.CONCEDE, loi)
+            else:
+                return (self, Move.WHY, attacker)
 
 
 

@@ -1,25 +1,29 @@
-class IllegalArgument(Exception):
+
+class ArgumentationException(Exception):
     pass
 
-class IllegalMove(Exception):
+class IllegalArgument(ArgumentationException):
     pass
 
-class NotYourMove(Exception):
+class IllegalMove(ArgumentationException):
     pass
 
-class DiscussionFinished(Exception):
+class NotYourMove(ArgumentationException):
     pass
 
-class MethodNotApplicable(Exception):
+class DiscussionFinished(ArgumentationException):
     pass
 
-class NoMoreMoves(Exception):
+class MethodNotApplicable(ArgumentationException):
     pass
 
-class Confused(Exception):
+class NoMoreMoves(ArgumentationException):
     pass
 
-class Disagree(Exception):
+class Confused(ArgumentationException):
+    pass
+
+class Disagree(ArgumentationException):
     pass
 
 def enum(*sequential, **named):
@@ -30,7 +34,8 @@ def enum(*sequential, **named):
     return type('Enum', (), enums)
 
 
-Move = enum('QUESTION', 'CLAIM', 'WHY', 'BECAUSE', 'CONCEDE', 'ASSERT')
+Move = enum('QUESTION', 'CLAIM', 'WHY', 'BECAUSE', 'CONCEDE',
+                'DISAGREE', 'RETRACT')
 
 PlayerType = enum('OPPONENT', 'PROPONENT')
 

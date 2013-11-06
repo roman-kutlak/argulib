@@ -172,7 +172,7 @@ def discuss2(arg=None):
     except Exception as e:
         print('Exception: %s' % str(e))
         print(d)
-        raise e
+        raise
 
     return d
 
@@ -268,7 +268,6 @@ class DialogTest(unittest.TestCase):
         expected = [StrictRule.from_str(x) for x in
                         [' --> sa', ' sa --> sb']]
         expected.sort(key=lambda x: x.name)
-        m.sort(key=lambda x: x.name)
         self.assertEqual(expected, m)
 
         m = d.do_justify('sc')
@@ -277,7 +276,6 @@ class DialogTest(unittest.TestCase):
                          '   --> sa',
                          'sa --> sb',
                          'sa,sb --> sc']]
-        m.sort(key=lambda x: x.name)
         self.assertEqual(expected, m)
 
     def test_explain(self):

@@ -52,9 +52,9 @@ class GroundedDiscussion:
         """ Return true if an argument was labelled differently before. """
         if len(lab_arg) == 0: return False
 
-        for _, _, arg in self.moves:
-            if len(arg) == 0: continue
-            if (arg.argument == lab_arg.argument and arg != lab_arg):
+        for la in self.open_issues:
+            if len(la) == 0: continue
+            if (la.argument == lab_arg.argument and la != lab_arg):
                 return True
         return False
 
@@ -86,6 +86,10 @@ class GroundedDiscussion:
             self._because(player, arg)
         elif move_type == Move.CONCEDE:
             self._concede(player, arg)
+        elif move_type == Move.RETRACT:
+            self._retract(player, arg)
+        elif move_type == Move.DISAGREE:
+            return None
         else:
             raise IllegalMove('Unknown move: %d' % move_type)
 
@@ -99,6 +103,7 @@ class GroundedDiscussion:
     def _claim(self, player, lab_arg):
         """ Claim that the argument has a particular status. """
         if player.role != PlayerType.PROPONENT:
+            print(player)
             raise NotYourMove('Only the proponent can "claim" arguments')
 
         if len(self.moves) != 0:
@@ -109,6 +114,15 @@ class GroundedDiscussion:
         player.update_commitment(lab_arg)
         self.open_issues.append(lab_arg)
         self.moves.append( (player, Move.CLAIM, lab_arg) )
+
+    def _retract(self, player, lab_arg):
+        if lab_arg in self.open_issues:
+            self.open_issues.remove(lab_arg)
+            self.moves.append( (player, Move.RETRACT, lab_arg) )
+            return None
+        else:
+            raise IllegalMove('%s(%s) is not in open issues'
+                    % (lab_arg.label, lab_arg.argument.name))
 
     def _because(self, player, lab_arg):
         if player.role != PlayerType.PROPONENT:
@@ -125,7 +139,8 @@ class GroundedDiscussion:
 
         if self.is_contradicting(lab_arg):
             raise IllegalMove('This argument was already used but with '
-                              'a different label')
+                              'a different label. '
+                              'Use retract if you wish to chage it.')
 
         if self.Debug: print('appending "because %s"' % lab_arg)
         self.open_issues.append(lab_arg)
@@ -142,7 +157,8 @@ class GroundedDiscussion:
 
         if self.is_contradicting(lab_arg):
             raise IllegalMove('This argument was already used but with '
-                              'a different label')
+                              'a different label. '
+                              'Use retract if you wish to chage it.')
 
         if not self.is_oi(lab_arg):
             self.open_issues.append(lab_arg)
@@ -197,7 +213,8 @@ class GroundedDiscussion2(GroundedDiscussion):
 
         if self.is_contradicting(lab_arg):
             raise IllegalMove('This argument was already used but with '
-                              'a different label')
+                              'a different label. '
+                              'Use retract if you wish to chage it.')
 
         if self.Debug: print('appending "because %s"' % lab_arg)
         self.open_issues.append(lab_arg)
@@ -210,7 +227,8 @@ class GroundedDiscussion2(GroundedDiscussion):
 
         if self.is_contradicting(lab_arg):
             raise IllegalMove('This argument was already used but with '
-                              'a different label')
+                              'a different label. '
+                              'Use retract if you wish to chage it.')
 
         if not self.is_oi(lab_arg):
             self.open_issues.append(lab_arg)
@@ -465,8 +483,10 @@ class Dialog:
             why p     - what reasoning lead to conclusion p
             why not p - what reasoning lead to conclusion -p
             assert r  - add a rule to the knowledge base
+            retract r - remove a rule from the knowledge base
             print af  - print argumentation framework
             pring kb  - print knowledge base
+            concede   - concede to the last open issue
 
         """
         tmp = command.strip().split(' ')
