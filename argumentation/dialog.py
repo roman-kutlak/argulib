@@ -83,14 +83,20 @@ class Commands(Cmd):
         print(self.af)
 
     def do_print_kb(self, l):
-        """ Print the knowledge base. """
+        """ Print the current knowledge base. """
         print('Current knowledge base: ')
         print(self.kb)
+
+    
+    def do_print_labelling(self, l):
+        """ Print the current labelling. """
+        print('Current labelling: ')
+        print(self.labelling)
 
     def do_print_discussion(self, l):
         """ Prints the current history of the discussion. """
         if self.discussion is not None: print(self.discussion)
-        else: print('Nothing has been discussed so far. ')
+        else: print('Nothing has been discussed so far.')
 
     # dialog commands
     
@@ -351,8 +357,3 @@ class Commands(Cmd):
 
     def emptyline(self):
         pass
-
-
-app = Commands()
-app.cmdloop()
-
