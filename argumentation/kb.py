@@ -163,7 +163,7 @@ class StrictRule(Rule):
         super().__init__(antecedent, consequent)
 
     def __repr__(self):
-        return ('StrictRule: %s' % str(self))
+        return ('StrictRule %s' % str(self))
     
     def __lt__(self, other):
         return False
@@ -224,7 +224,7 @@ class DefeasibleRule(Rule):
         return text
 
     def __repr__(self):
-        return ('DefeasibleRule "%s": %s' % (self.name, str(self)))
+        return ('DefeasibleRule %s' % str(self))
 
     @classmethod
     def from_str(cls, data):
@@ -630,7 +630,7 @@ class Argument:
 # parsing related functions
 ################################################################################
 
-literal = Group(Optional(Word('-')) + Word(alphas + '_'))
+literal = Group(Optional(Word('-')) + Word(alphanums + '_'))
 literals = delimitedList(literal)
 antecedent = literals
 vulnerabilities = literals

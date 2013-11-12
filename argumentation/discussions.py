@@ -328,6 +328,19 @@ class Dialog:
             rules = self.kb.rules[conclusion]
             # return the 'first' rule
             for x in rules: return x
+            
+    def find_rules(self, conclusion):
+        """ Find rules with the given conclusion.
+        Return None if no such rule exists.
+        
+        """
+        if isinstance(conclusion, str):
+            conclusion = Literal.from_str(conclusion)
+        if not conclusion in self.kb.rules:
+            return None
+        else:
+            rules = self.kb.rules[conclusion]
+            return list(rules)
 
     def find_argument(self, conclusion):
         """ Find an argument with given conclusion.
@@ -342,6 +355,19 @@ class Dialog:
             args = self.kb._arguments[conclusion]
             # return the 'first' rule
             for x in args: return x
+            
+    def find_arguments(self, conclusion):
+        """ Find argument with given conclusion.
+        Return None if no such argument exists.
+        
+        """
+        if isinstance(conclusion, str):
+            conclusion = Literal.from_str(conclusion)
+        if not conclusion in self.kb._arguments:
+            return None
+        else:
+            args = self.kb._arguments[conclusion]
+            return list(args)
 
     # FIXME: throw an exception if a new rule would make KB inconsistent?
     def add(self, rule):
@@ -413,43 +439,51 @@ class Dialog:
 
     def do_explain(self, conclusion):
         """ Show which antecedants are missing to achieve the conclusion. """
-        rule = self.find_rule(conclusion)
-        if rule is None:
+        print('Trying to explain ' + str(conclusion))
+        rules = self.find_rules(conclusion)
+        if rules is None or len(rules) == 0:
             rule = self.find_rule('-' + conclusion)
             if rule is None:
                 return ('There is no rule with conclusion "%s"' % conclusion)
             else:
-                return self.do_justify(rule.consequent)
-        # check that it is actually not true
-        arg = self.find_argument(conclusion)
-        if arg is not None:
-            return ('The proposition "%s" is true' % conclusion)
-        # find missing antecedants
-        missing = list()
-        for a in rule.antecedent:
-            r = self.find_rule(a)
-            if r is None:
-                missing.append(a)
-        if missing != []:
-            return 'The following conditions are not fulfilled: ' + str(missing)
+                return self.do_justify('-' + conclusion)
 
-        # probably defeasible rule that was undercut
-        missing = list()
-        for a in rule.vulnerabilities:
-            r = self.find_rule(-a)
-            if r is None:
-                missing.append(a)
-        if missing == []:
-            return 'No idea'
-        return ('The following conditions prevent concluding %s: ' % conclusion
-                    + str(missing))
+        # check that it is actually not true
+        args = self.find_arguments(conclusion)
+        if args is not None and len(args) > 0:
+            return ('The proposition "%s" is true' % conclusion)
+
+        # find out what the problem is
+        for rule in rules:
+            # find missing antecedants
+            missing = list()
+            for a in rule.antecedent:
+                ar = self.find_argument(a)
+                if ar is None:
+                    missing.append(a)
+            if missing != []:
+                return ('The following conditions are not fulfilled: ' \
+                            + str(missing))
+
+            # probably defeasible rule that was undercut
+            missing = list()
+            for a in rule.vulnerabilities:
+                ar = self.find_argument(-a)
+                if ar is not None:
+                    missing.append(a)
+            if missing != []:
+                return ('The following vulnerabilities prevent concluding %s: '
+                        % conclusion + str(missing))
+        # if all fails...
+        return 'No idea. The examined rules are: %s' % str(rules)
 
     def do_assert(self, rule):
         if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
             rule = '==> ' + rule
         try:
             self.add(rule)
-            return 'Rule "%s" added.' % str(rule)
+#            return 'Rule "%s" asserted.' % str(rule)
+            return 'asserted'
         except ParseError as pe:
             return str(pe)
 
@@ -459,7 +493,8 @@ class Dialog:
         try:
             res = self.delete(rule)
             if res:
-                return 'rule "%s" deleted' % str(rule)
+#                return 'rule "%s" deleted' % str(rule)
+                return 'deleted'
             else:
                 return 'no rule "%s" found' % str(rule)
         except Exception as e:
@@ -497,14 +532,11 @@ class Dialog:
         if 'why' == tmp[0]:
             if ('IN' == tmp[1].upper() or
                'OUT' == tmp[1].upper() or
-               'UNDEC' == tmp[1].upper()):
+               'UNDEC' == tmp[1].upper() or
+               'NOT' == tmp[1].upper()):
                 if len(tmp) < 3:
                     return('the command "%s" has too few arguments' % command)
                 return self.do_question(tmp[1], tmp[2])
-            if 'not' == tmp[1]:
-                if len(tmp) < 3:
-                    return('the command "%s" has too few arguments' % command)
-                return self.do_explain(tmp[2])
             return self.do_justify(tmp[1])
 
         elif 'assert' == tmp[0]:
@@ -519,6 +551,9 @@ class Dialog:
             if 'kb'   == tmp[1].strip().lower(): return self.do_print_kb()
             elif 'af' == tmp[1].strip().lower(): return self.do_print_aaf()
             else: return 'Unknown parameter "%s"' % tmp[1]
+        elif 'save' == tmp[0]:
+            self.aaf.save_interesting_graph()
+        else: return 'Unknown command'
 
 
 
