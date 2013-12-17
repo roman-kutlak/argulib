@@ -448,16 +448,21 @@ class ArgumentationFramework:
         #weakest link approach
         defeasibles_1 = list(a1.get_defeasible_rules())
         defeasibles_2 = list(a2.get_defeasible_rules())
-        weights_1 = list(map(lambda x: x.weight, defeasibles_1))
-        weights_2 = list(map(lambda x: x.weight, defeasibles_2))
-        w1 = min(weights_1)
-        w2 = min(weights_2)
+        weights_1 = [x.weight for x in defeasibles_1 if x.weight != 0]
+        weights_2 = [x.weight for x in defeasibles_2 if x.weight != 0]
+        # all rules are 0 by default so take them out of the equation
+        w1 = -1 if len(weights_1) == 0 else min(weights_1)
+        w2 = -1 if len(weights_2) == 0 else min(weights_2)
         
         # a1 rebuts a2 if one of the subarguments of a2 has an opposite concl.
         if self.debug: print('rebuts for %s' % str(a1))
         for subargument in a2.subarguments:
             if (-a1.conclusion == subargument.conclusion):
-                # depending on the ordering rules...
+#                print('Rebut: ')
+#                print('\t %s; %s' % (str(a1), str(a2)))
+#                print('\t %s; %s' % (str(weights_1), str(weights_2)))
+                # depending on the ordering rules...if they are the same weight,
+                # they attack each other
                 if not (w1 < w2):
                     a1.plus.add(a2)
                     a2.minus.add(a1)

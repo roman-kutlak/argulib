@@ -335,9 +335,10 @@ class KnowledgeBase:
         pass
 
     def order(self):
+#        print(self.orderings)
         for n, r in self.defeasible_rules.items():
             found = False
-            w = 1
+            w = 0
             for g in self.orderings:
                 if n in g:
                     r.weight = w

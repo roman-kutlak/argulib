@@ -425,7 +425,7 @@ class Dialog:
                 return ('There are no arguments against "%s".'
                             % str(conclusion))
             rule = move[2].argument.rule
-            return str(rule)
+            return ('argument_against_label_' + label, rule)
         else:
             return 'ok'
 
@@ -434,8 +434,7 @@ class Dialog:
         arg = self.find_argument(conclusion)
         if arg is None:
             return ('There is no argument with conclusion "%s"' % conclusion)
-        move = [x.rule for x in arg.subarguments]
-        return str(move)
+        return ('justification', arg.rule)
 
     def do_explain(self, conclusion):
         """ Show which antecedants are missing to achieve the conclusion. """
@@ -462,20 +461,11 @@ class Dialog:
                 if ar is None:
                     missing.append(a)
             if missing != []:
-                return ('The following conditions are not fulfilled: ' \
-                            + str(missing))
+                return ('The following conditions are not fulfilled:' %
+                         str(missing))
 
-            # probably defeasible rule that was undercut
-            missing = list()
-            for a in rule.vulnerabilities:
-                ar = self.find_argument(-a)
-                if ar is not None:
-                    missing.append(a)
-            if missing != []:
-                return ('The following vulnerabilities prevent concluding %s: '
-                        % conclusion + str(missing))
         # if all fails...
-        return 'No idea. The examined rules are: %s' % str(rules)
+        return ('No idea. The examined rules are: "%s"' % rules)
 
     def do_assert(self, rule):
         if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
