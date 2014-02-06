@@ -461,7 +461,7 @@ class Dialog:
                 if ar is None:
                     missing.append(a)
             if missing != []:
-                return ('The following conditions are not fulfilled:' %
+                return ('The following conditions are not fulfilled: %s' %
                          str(missing))
 
         # if all fails...
