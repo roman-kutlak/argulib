@@ -392,9 +392,9 @@ class KnowledgeBase:
         old_size = -1
         rules = list(self.get_rules())
         rules.sort(key=lambda x: x.name)
-        while (old_size != seq_len(self.arguments)):
+        while (old_size != len(self)):
             # how many proofs we are starting from in this iteration
-            old_size = seq_len(self.arguments)
+            old_size = len(self)
             for r in rules:
 #                print('Current rule %s' % repr(r))
                 proofs = dict()
@@ -409,7 +409,11 @@ class KnowledgeBase:
 #                    print('\tadding argument with conclusion %s'
 #                          % str(r.consequent))
                     self.add_argument(r, proofs)
-    
+
+    def __len__(self):
+        """Return the number of arguments. """
+        return seq_len(self.arguments)
+
     def add_argument(self, rule, prfs):
         # check if there exists an argument with the rule
         for a in self.arguments:
