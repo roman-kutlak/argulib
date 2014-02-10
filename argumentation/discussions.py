@@ -310,9 +310,12 @@ class Dialog:
         """Return true if there is an argument with the conclusion and it is IN.
         """
         if self.discussion is None: self._init_discussion()
-        arg = self.find_argument(conclusion)
-        if arg is not None and self.discussion.labelling.label_for(arg) == 'IN':
-            return True
+        args = self.find_arguments(conclusion)
+        if args is None: return False
+        lab = self.discussion.labelling.label_for
+        for arg in args:
+            if arg is not None and lab(arg) == 'IN':
+                return True
         return False
 
     def find_rule(self, conclusion):
@@ -411,7 +414,7 @@ class Dialog:
         system_lab = self.discussion.labelling.label_for(arg)
         if system_lab != label.upper():
             return ('The argument "%s" is labeled "%s" and not "%s"' %
-                    (conclusion, system_lab, label))
+                    (conclusion, system_lab.lower(), label))
         d = self.discussion
         lab_arg = Labelling.from_argument(arg, label)
         d.move(d.opponent, Move.WHY, lab_arg)
@@ -473,7 +476,7 @@ class Dialog:
         try:
             self.add(rule)
 #            return 'Rule "%s" asserted.' % str(rule)
-            return 'asserted'
+            return 'asserted %s' % str(rule)
         except ParseError as pe:
             return str(pe)
 
@@ -484,7 +487,7 @@ class Dialog:
             res = self.delete(rule)
             if res:
 #                return 'rule "%s" deleted' % str(rule)
-                return 'deleted'
+                return 'deleted %s' % str(rule)
             else:
                 return 'no rule "%s" found' % str(rule)
         except Exception as e:
