@@ -324,7 +324,11 @@ class Dialog:
         
         """
         if isinstance(conclusion, str):
-            conclusion = Literal.from_str(conclusion)
+            try:
+                conclusion = Literal.from_str(conclusion)
+            except ParseError as pe:
+                print(pe)
+                return None
         if not conclusion in self.kb.rules:
             return None
         else:
@@ -338,7 +342,11 @@ class Dialog:
         
         """
         if isinstance(conclusion, str):
-            conclusion = Literal.from_str(conclusion)
+            try:
+                conclusion = Literal.from_str(conclusion)
+            except ParseError as pe:
+                print(pe)
+                return None
         if not conclusion in self.kb.rules:
             return None
         else:
@@ -351,7 +359,11 @@ class Dialog:
         
         """
         if isinstance(conclusion, str):
-            conclusion = Literal.from_str(conclusion)
+            try:
+                conclusion = Literal.from_str(conclusion)
+            except ParseError as pe:
+                print(pe)
+                return None
         if not conclusion in self.kb._arguments:
             return None
         else:
@@ -365,7 +377,11 @@ class Dialog:
         
         """
         if isinstance(conclusion, str):
-            conclusion = Literal.from_str(conclusion)
+            try:
+                conclusion = Literal.from_str(conclusion)
+            except ParseError as pe:
+                print(pe)
+                return None
         if not conclusion in self.kb._arguments:
             return None
         else:

@@ -77,15 +77,15 @@ class Literal:
 
     @classmethod
     def from_str(cls, data):
+        params = data
         if isinstance(data, str):
             data = data.strip()
             try:
                 parsed = literal.parseString(data, parseAll=True)
                 params = parsed[0]
             except pyparsing.ParseException as ex:
-                raise ParseError(str(ex))
-        else:
-            params = data
+#                raise ParseError(str(ex)) from ex
+                print(ex)
         if (len(params) == 1):
             return cls(params[0])
         elif (len(params) == 2):
