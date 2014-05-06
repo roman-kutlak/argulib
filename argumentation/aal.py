@@ -489,7 +489,7 @@ class ArgumentationFramework:
     def save_graph(self):
         self._save_graph(list(self.arguments))
 
-    def save_interesting_graph(self):
+    def save_interesting_graph(self, path='af.pdf'):
         """ Only plot arguments that attack or are attacked by something. """
         is_interesting = lambda x: len(x.plus) > 0 or len(x.minus) > 0
 
