@@ -1,8 +1,13 @@
+import logging
 import random
 
 from .common import Move, PlayerType, role_str
 from .common import NoMoreMoves, IllegalArgument, IllegalMove, Disagree
 from .aal import Labelling, is_justified, oi_to_args
+
+
+def get_log():
+    return logging.getLogger('arg')
 
 
 class Player:

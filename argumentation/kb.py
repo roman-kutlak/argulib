@@ -1,8 +1,13 @@
+import logging
 import copy
 from collections import defaultdict
 
 import pyparsing
 from pyparsing import Word, Group, Optional, alphanums, alphas, delimitedList
+
+
+def get_log():
+    return logging.getLogger('arg')
 
 
 """ Structures and functions for reading a knowledge base of rules for 
@@ -170,6 +175,8 @@ class StrictRule(Rule):
     
     @classmethod
     def from_str(cls, data):
+        if not isinstance(data, str):
+            raise ParseError('"%s" is not a string' % repr(data))
         try:
             parsed = strict_rule.parseString(data, parseAll=True)
             antecedent = None
@@ -228,6 +235,8 @@ class DefeasibleRule(Rule):
 
     @classmethod
     def from_str(cls, data):
+        if not isinstance(data, str):
+            raise ParseError('"%s" is not a string' % repr(data))
         try:
             parsed = defeasible_rule.parseString(data, parseAll=True)
             if 'name' in parsed:
@@ -247,7 +256,7 @@ class DefeasibleRule(Rule):
             return cls(name, antecedent, consequent, vulners)
         except Exception as e:
             raise ParseError('"%s" is not a defeasible rule\n\tError: %s'
-                             % (data, str(e)))
+                             % (repr(data), str(e)))
 
 
 class KnowledgeBase:
@@ -349,6 +358,7 @@ class KnowledgeBase:
     def add_rule(self, rule, recalc=True):
         """ Add a new rule to the knowledge base. """
         if not isinstance(rule, Rule): raise TypeError()
+        get_log().debug('adding rule "%s"' % str(rule))
         if rule.consequent not in self.rules:
             rules = set()
             rules.add(rule)
@@ -374,8 +384,16 @@ class KnowledgeBase:
         if not isinstance(rule, Rule): raise TypeError()
         if rule.consequent not in self.rules: return False
         rules = self.rules[rule.consequent]
-        if rule not in rules: return False
-        rules.remove(rule)
+        toRemove = None
+        # do not match on name, just find the rule
+        for r in rules:
+            if (r.antecedent == rule.antecedent and
+                r.consequent == rule.consequent and
+                isinstance(rule, type(r))):
+                toRemove = r
+                break
+        rules.remove(toRemove)
+        # FIXME: remove the rule from arguments
         self.construct_arguments()
         return True
 
@@ -387,8 +405,7 @@ class KnowledgeBase:
         return None
     
     def construct_arguments(self):
-#        print()
-        self._arguments = defaultdict(set)
+        get_log().debug('constructing arguments')
         old_size = -1
         rules = list(self.get_rules())
         rules.sort(key=lambda x: x.name)
@@ -396,18 +413,18 @@ class KnowledgeBase:
             # how many proofs we are starting from in this iteration
             old_size = len(self)
             for r in rules:
-#                print('Current rule %s' % repr(r))
+                get_log().debug('Current rule %s' % repr(r))
                 proofs = dict()
                 for a in r.antecedent:
                     if a in self._arguments:
                         proofs[a] = self._arguments[a]
                     else:
-#                        print('\tno proof for antecedent %s' % str(a))
+#                        get_log().debug('\tno proof for antecedent %s' % str(a))
                         break
                 # do we have a proof for all antecedents?
                 if len(proofs) == len(r.antecedent):
-#                    print('\tadding argument with conclusion %s'
-#                          % str(r.consequent))
+                    get_log().debug('\tadding argument with conclusion %s'
+                                    % str(r.consequent))
                     self.add_argument(r, proofs)
 
     def __len__(self):
@@ -415,13 +432,22 @@ class KnowledgeBase:
         return seq_len(self.arguments)
 
     def add_argument(self, rule, prfs):
+        get_log().debug('adding an argument for rule "%s" '
+                        'using the following proofs: %s' %
+                         (str(rule), str(prfs)))
+        for c, p in prfs.items():
+            get_log().debug('proof of "%s": "%s"' % (str(c), str(p)))
+            for a in p:
+                print(a.name)
         # check if there exists an argument with the rule
         for a in self.arguments:
             if a.rule == rule:
                 return
 
         name = self.generate_argument_name(rule)
-        proofs = copy.deepcopy(prfs)
+        # FIXME: the following line throws an exception!!!!!!!!!
+#        proofs = copy.deepcopy(prfs)
+        proofs = prfs # is this correct?
         # if the consequent appears as any of the antecedents break (rule loop)
         for proof_set in proofs.values():
             to_delete = list()
@@ -438,6 +464,7 @@ class KnowledgeBase:
                 return
 
         a = Argument(name, rule, prfs)
+        get_log().debug('Created a new argument: %s' % repr(a))
 #        print('..... adding %s' % str(a))
         self._arguments[rule.consequent].add(a)
 
@@ -447,16 +474,16 @@ class KnowledgeBase:
             for a in args:
                 yield a
 
-    def construct_strict_rule(self, string):
+    def construct_strict_rule(self, string, recalc=False):
         try:
             rule = StrictRule.from_str(string)
             if (rule.name == ""):
                 rule.name = self.generate_str_rule_name(rule)
-            self.add_rule(rule, recalc=False)
+            self.add_rule(rule, recalc=recalc)
         except Exception as e:
-            print('CSR: Exception: %s' % e)
+            get_log().exception('CSR: Exception: %s' % e)
 
-    def construct_defeasible_rule(self, string):
+    def construct_defeasible_rule(self, string, recalc=False):
         try:
             rule = DefeasibleRule.from_str(string)
             if (rule.name == ""):
@@ -467,9 +494,9 @@ class KnowledgeBase:
                     'Two different defeasible rules with same the name: %s'
                      % rule.name)
             self.defeasible_rules[rule.name] = rule
-            self.add_rule(rule, recalc=False)
+            self.add_rule(rule, recalc=recalc)
         except Exception as e:
-            print('CDR: Exception: %s' % e)
+            get_log().exception('CDR: Exception: %s' % e)
 
     def construct_ordering_rule(self, string):
     # assuming that the next batch of orderings follows the current

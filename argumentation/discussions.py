@@ -1,10 +1,15 @@
 #from enum import Enum
 
+import logging
+
 from .common import *
 from .kb import KnowledgeBase, StrictRule, DefeasibleRule, Literal, ParseError
 from .aal import ArgumentationFramework, Labelling
 from .players import SmartPlayer, HumanPlayer
 
+
+def get_log():
+    return logging.getLogger('arg')
 
 class GroundedDiscussion:
     Debug = False
@@ -306,6 +311,9 @@ class Dialog:
                             SmartPlayer(PlayerType.PROPONENT),
                             HumanPlayer(PlayerType.OPPONENT))
 
+    def labelling(self):
+        return Labelling.grounded(self.aaf)
+
     def is_accepted_conclusion(self, conclusion):
         """Return true if there is an argument with the conclusion and it is IN.
         """
@@ -393,13 +401,11 @@ class Dialog:
         """ Add a rule to the knowledge base. """
         if isinstance(rule, str):
             if '->' in rule:
-                rule = StrictRule.from_str(rule)
+                self.kb.construct_strict_rule(rule, recalc=True)
             elif '=>' in rule:
-                rule = DefeasibleRule.from_str(rule)
+                self.kb.construct_defeasible_rule(rule, recalc=True)
             else:
                 raise ParseError('"%s" is not a valid rule' % rule)
-        # rule is either a StrictRule or DefeasibleRule
-        self.kb.add_rule(rule)
         self.aaf = ArgumentationFramework(self.kb)
         self.discussion = None
 
@@ -533,6 +539,7 @@ class Dialog:
             concede   - concede to the last open issue
 
         """
+        get_log().info('parsing command: "%s"' % command)
         tmp = command.strip().split(' ')
 #        print('User command: %s' % str(tmp))
         if len(tmp) < 2:

@@ -6,11 +6,16 @@
 
 """
 
+import logging
 import copy
 from .common import *
 from .kb import Literal
 
 
+def get_log():
+    return logging.getLogger('arg')
+
+    
 class Labelling:
     """Labelling (possibly partial)"""
     _framework, IN, OUT, UNDEC = None, None, None, None
