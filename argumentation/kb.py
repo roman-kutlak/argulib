@@ -392,8 +392,10 @@ class KnowledgeBase:
                 isinstance(rule, type(r))):
                 toRemove = r
                 break
+        print('deleting rule: ' + str(toRemove))
         rules.remove(toRemove)
-        # FIXME: remove the rule from arguments
+        # reconstruct the arguments
+        self._arguments = defaultdict(set)
         self.construct_arguments()
         return True
 
@@ -406,6 +408,7 @@ class KnowledgeBase:
     
     def construct_arguments(self):
         get_log().debug('constructing arguments')
+        done = set()
         old_size = -1
         rules = list(self.get_rules())
         rules.sort(key=lambda x: x.name)
@@ -414,18 +417,27 @@ class KnowledgeBase:
             old_size = len(self)
             for r in rules:
                 get_log().debug('Current rule %s' % repr(r))
+                if r in done:
+                    get_log().debug('\t...already done')
+                    continue
                 proofs = dict()
-                for a in r.antecedent:
-                    if a in self._arguments:
-                        proofs[a] = self._arguments[a]
-                    else:
-#                        get_log().debug('\tno proof for antecedent %s' % str(a))
-                        break
-                # do we have a proof for all antecedents?
-                if len(proofs) == len(r.antecedent):
-                    get_log().debug('\tadding argument with conclusion %s'
-                                    % str(r.consequent))
-                    self.add_argument(r, proofs)
+                try:
+                    for a in r.antecedent:
+                        if a in self._arguments:
+                            proofs[a] = self._arguments[a]
+                        else:
+    #                        get_log().debug('\tno proof for antecedent %s' % str(a))
+                            break
+                    # do we have a proof for all antecedents?
+                    if len(proofs) == len(r.antecedent):
+                        get_log().debug('\tadding argument with conclusion %s'
+                                        % str(r.consequent))
+                        self.add_argument(r, proofs)
+                        done.add(r)
+                except KeyError as e:
+                    get_log().debug('\tno proof for antecedent %s' % str(e))
+                except Exception as e:
+                    get_log().exception(e)
 
     def __len__(self):
         """Return the number of arguments. """
@@ -465,7 +477,6 @@ class KnowledgeBase:
 
         a = Argument(name, rule, prfs)
         get_log().debug('Created a new argument: %s' % repr(a))
-#        print('..... adding %s' % str(a))
         self._arguments[rule.consequent].add(a)
 
     @property
@@ -635,7 +646,7 @@ class Argument:
     def __hash__(self):
         value = hash(self.name)
         value ^= hash(self.rule)
-#        value ^= hash(len(self.subarguments)
+        value ^= hash(tuple(sorted(self._arguments)))
         return value
     
     def __eq__(self, other):

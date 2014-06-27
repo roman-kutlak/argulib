@@ -401,11 +401,12 @@ class Dialog:
         """ Add a rule to the knowledge base. """
         if isinstance(rule, str):
             if '->' in rule:
-                self.kb.construct_strict_rule(rule, recalc=True)
+                rule = StrictRule.from_str(rule)
             elif '=>' in rule:
-                self.kb.construct_defeasible_rule(rule, recalc=True)
+                rule = DefeasibleRule.from_str(rule)
             else:
                 raise ParseError('"%s" is not a valid rule' % rule)
+        res = self.kb.add_rule(rule)
         self.aaf = ArgumentationFramework(self.kb)
         self.discussion = None
 
@@ -420,6 +421,7 @@ class Dialog:
                 raise ParseError('"%s" is not a valid rule' % rule)
         res = self.kb.del_rule(rule)
         if res:
+            print('creating new aaf')
             self.aaf = ArgumentationFramework(self.kb)
             self.discussion = None
         return res
