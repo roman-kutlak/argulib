@@ -142,9 +142,14 @@ class Rule:
         return value
 
     def __str__(self):
-        return ('%s: %s --> %s' %
-                (self.name,
-                 ','.join(map(str, self.antecedent)), str(self.consequent)))
+        if self.name != '':
+            text = ('%s: ' % self.name)
+        else:
+            text = ''
+        return ('%s%s --> %s' %
+                (text,
+                ','.join(map(str, self.antecedent)),
+                str(self.consequent)))
 
     def __repr__(self):
         return ("Rule: %s" % str(self))
@@ -220,7 +225,10 @@ class DefeasibleRule(Rule):
         return value
 
     def __str__(self):
-        text = ('%s: ' % self.name)
+        if self.name != '':
+            text = ('%s: ' % self.name)
+        else:
+            text = ''
         if (len(self.antecedent) > 0):
             text += ('%s ' % ','.join(map(str, self.antecedent)))
         if (len(self.vulnerabilities) > 0):
@@ -266,7 +274,7 @@ class KnowledgeBase:
         self.name = name
         self.defeasible_rules = dict() # temporary dict for name:rule
         self.rules = dict() # actual rules
-        self.orderings = list() # temporary list of orderings
+        self.orderings = list()
         self.defeasible_idx = 0
         self.strict_idx = 0
         self.argument_idx = 0
@@ -543,7 +551,15 @@ class KnowledgeBase:
         with open(file_name, "r") as f:
             self.parse_file(f)
 
-
+    def save_into_file(self, file_name):
+        with open(file_name, "w") as f:
+            for conclusion, rules in self.rules.items():
+                f.write('# rules with conclusion "%s":\n' % str(conclusion))
+                for r in rules:
+                    f.write(str(r) + '\n')
+            for o in self.orderings:
+                f.write(str(o))
+            
     def parse_file(self, file):
         line_no = 0
         for line in file:
