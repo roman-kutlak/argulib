@@ -10,7 +10,7 @@ This module implements interface for persuasion discussions.
 
 """
 
-import sys, os
+import sys, os, logging
 from optparse import OptionParser
 from cmd import Cmd
 from glob import glob
@@ -21,6 +21,10 @@ from argumentation.kb import KnowledgeBase, Literal, ParseError
 from argumentation.players import SmartPlayer, ScepticalPlayer
 from argumentation.players import HumanPlayer, PlayerType
 from argumentation.discussions import GroundedDiscussion2
+
+
+def get_log():
+    return logging.getLogger('arg')
 
 Debug = False
 
