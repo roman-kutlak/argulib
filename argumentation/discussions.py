@@ -429,8 +429,9 @@ class Dialog:
             return self.do_explain(conclusion)
         system_lab = self.discussion.labelling.label_for(arg)
         if system_lab != label.upper():
-            return ('The argument "%s" is labeled "%s" and not "%s"' %
-                    (conclusion, system_lab.lower(), label))
+            return (['The argument', str(conclusion),
+                     'is labeled', str(system_lab.lower()),
+                     'and not', str(label)])
         d = self.discussion
         lab_arg = Labelling.from_argument(arg, label)
         d.move(d.opponent, Move.WHY, lab_arg)
