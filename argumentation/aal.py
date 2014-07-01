@@ -10,6 +10,7 @@ import logging
 import copy
 from .common import *
 from .kb import Literal
+import utils
 
 
 def get_log():
@@ -406,6 +407,7 @@ def is_justified(lab_arg, labelling):
 
 class ArgumentationFramework:
     def __init__(self, kb):
+        utils.get_log().info('Creating AAF')
         self.debug = False
         self._arguments = dict()
         self.kb = kb

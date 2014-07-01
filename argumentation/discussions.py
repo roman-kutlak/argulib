@@ -406,9 +406,7 @@ class Dialog:
                 rule = DefeasibleRule.from_str(rule)
             else:
                 raise ParseError('"%s" is not a valid rule' % rule)
-        res = self.kb.add_rule(rule)
-        self.aaf = ArgumentationFramework(self.kb)
-        self.discussion = None
+        return self.kb.add_rule(rule)
 
     def delete(self, rule):
         """ Remove a rule from the knowledge base. """
@@ -419,12 +417,7 @@ class Dialog:
                 rule = DefeasibleRule.from_str(rule)
             else:
                 raise ParseError('"%s" is not a valid rule' % rule)
-        res = self.kb.del_rule(rule)
-        if res:
-            print('creating new aaf')
-            self.aaf = ArgumentationFramework(self.kb)
-            self.discussion = None
-        return res
+        return self.kb.del_rule(rule)
 
 
     #############  Commands #############
@@ -499,9 +492,11 @@ class Dialog:
         if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
             rule = '==> ' + rule
         try:
-            self.add(rule)
-#            return 'Rule "%s" asserted.' % str(rule)
-            return 'asserted %s' % str(rule)
+            res = self.add(rule)
+            if res:
+                self.recalculate()
+                return 'asserted %s' % str(rule)
+            return 'Rule not added (perhaps it already exists?)'
         except ParseError as pe:
             return str(pe)
 
@@ -509,14 +504,20 @@ class Dialog:
         if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
             rule = '==> ' + rule
         try:
-            res = self.delete(rule)
+            res = self.delete(rule) 
             if res:
-#                return 'rule "%s" deleted' % str(rule)
+                self.recalculate()
                 return 'deleted %s' % str(rule)
             else:
                 return 'no rule "%s" found' % str(rule)
+            return res
         except Exception as e:
             return str(e)
+        
+    def recalculate(self):
+        """ Recalculate the arguments from the knowledge base. """
+        self.aaf = ArgumentationFramework(self.kb)
+        self.discussion = None
 
     def do_print_aaf(self):
         """ Return the string representing the current argumentation framework.
@@ -573,10 +574,5 @@ class Dialog:
         elif 'save' == tmp[0]:
             self.aaf.save_interesting_graph()
         else: return 'Unknown command'
-
-
-
-
-
 
 

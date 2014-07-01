@@ -718,4 +718,15 @@ def seq_len(seq):
     return sum(1 for i in seq)
 
 
+def rule(string):
+    rule = None
+    if '->' in string:
+        rule = StrictRule.from_str(string)
+    elif '=>' in rule:
+        rule = DefeasibleRule.from_str(string)
+    else:
+        rule = DefeasibleRule.from_str('==> ' + string)
+    return rule
+
+
 
