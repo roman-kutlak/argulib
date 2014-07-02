@@ -496,7 +496,7 @@ class Dialog:
             if res:
                 self.recalculate()
                 return 'asserted %s' % str(rule)
-            return 'Rule not added (perhaps it already exists?)'
+            return 'Rule "%s" not added (perhaps it already exists?)'%str(rule)
         except ParseError as pe:
             return str(pe)
 
