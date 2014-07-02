@@ -169,8 +169,9 @@ class Rule:
 
 class StrictRule(Rule):
     """ A strict rule is essentially the same as the Rule. """
-    def __init__(self, antecedent, consequent):
+    def __init__(self, name, antecedent, consequent):
         super().__init__(antecedent, consequent)
+        self.name = name
 
     def __repr__(self):
         return ('StrictRule %s' % str(self))
@@ -184,13 +185,17 @@ class StrictRule(Rule):
             raise ParseError('"%s" is not a string' % repr(data))
         try:
             parsed = strict_rule.parseString(data, parseAll=True)
+            if 'name' in parsed:
+                name = parsed['name']
+            else:
+                name = ""
             antecedent = None
             if 'antecedent' in parsed:
                 antecedent = list(map(Literal.from_str, parsed['antecedent']))
             else:
                 antecedent = []
             consequent = Literal.from_str(parsed['consequent'][0])
-            return cls(antecedent, consequent)
+            return cls(name, antecedent, consequent)
         except Exception as e:
             raise ParseError('"%s" is not a strict rule\n\t error: %s'
                              % (data, str(e)))
@@ -590,9 +595,11 @@ class KnowledgeBase:
         nc = -(rule.consequent) # negation of the consequent
         if (isinstance(rule, StrictRule)):
             for a in rule.antecedent:
+                idx = 1
                 antecedent = [i for i in rule.antecedent if i != a]
                 antecedent.append(nc)
-                r = StrictRule(antecedent, -a)
+                new_name = '%s_%s' %(rule.name, str(idx))
+                r = StrictRule(new_name, antecedent, -a)
                 r.name = self.generate_str_rule_name(r)
                 rules.append(r)
         elif (isinstance(rule, DefeasibleRule)):
@@ -704,8 +711,8 @@ consequent = literal
 ruleName = Word(alphanums + '_')
 ruleNames = delimitedList(ruleName)
 
-strict_rule = Optional(
-       Group(antecedent).setResultsName("antecedent")) \
+strict_rule = Optional(ruleName.setResultsName("name") + ':') + \
+    Optional(Group(antecedent).setResultsName("antecedent")) \
         + "-->" + Group(consequent).setResultsName("consequent")
 
 defeasible_rule = Optional(ruleName.setResultsName("name") + ':') + \
