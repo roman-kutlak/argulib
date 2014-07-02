@@ -367,14 +367,19 @@ class KnowledgeBase:
         """ Add a new rule to the knowledge base. """
         if not isinstance(rule, Rule): raise TypeError()
         get_log().debug('adding rule "%s"' % str(rule))
+        result = False
         if rule.consequent not in self.rules:
             rules = set()
             rules.add(rule)
             self.rules[rule.consequent] = rules
+            result = True
         else:
+            result = rule not in self.rules[rule.consequent]
             self.rules[rule.consequent].add(rule)
+            
         # re-compute arguments...
-        if recalc: self.construct_arguments()
+        if result and recalc: self.construct_arguments()
+        return result
 
     def rule_with_consequent(self, consequent):
         """ Return a rule with the given consequent or None. """
@@ -400,12 +405,14 @@ class KnowledgeBase:
                 isinstance(rule, type(r))):
                 toRemove = r
                 break
-        print('deleting rule: ' + str(toRemove))
-        rules.remove(toRemove)
-        # reconstruct the arguments
-        self._arguments = defaultdict(set)
-        self.construct_arguments()
-        return True
+        if (len(toRemove) > 0):
+            print('deleting rule: ' + str(toRemove))
+            rules.remove(toRemove)
+            # reconstruct the arguments
+            self._arguments = defaultdict(set)
+            self.construct_arguments()
+            return True
+        return False
 
     def get_rule(self, name):
         """ Return a rule with given name or None. """
@@ -458,7 +465,7 @@ class KnowledgeBase:
         for c, p in prfs.items():
             get_log().debug('proof of "%s": "%s"' % (str(c), str(p)))
             for a in p:
-                print(a.name)
+                get_log().debug(a.name)
         # check if there exists an argument with the rule
         for a in self.arguments:
             if a.rule == rule:

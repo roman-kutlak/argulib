@@ -319,6 +319,7 @@ class Dialog:
         """
         if self.discussion is None: self._init_discussion()
         args = self.find_arguments(conclusion)
+        get_log().info(str(args))
         if args is None: return False
         lab = self.discussion.labelling.label_for
         for arg in args:
@@ -496,7 +497,9 @@ class Dialog:
             if res:
                 self.recalculate()
                 return 'asserted %s' % str(rule)
-            return 'Rule "%s" not added (perhaps it already exists?)'%str(rule)
+            else:
+                return ('Rule "%s" not added (perhaps it already exists?)' %
+                        str(rule))
         except ParseError as pe:
             return str(pe)
 
@@ -516,6 +519,7 @@ class Dialog:
         
     def recalculate(self):
         """ Recalculate the arguments from the knowledge base. """
+        get_log().info('Recalculating aaf')
         self.aaf = ArgumentationFramework(self.kb)
         self.discussion = None
 

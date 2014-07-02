@@ -219,7 +219,7 @@ class Labelling:
         elif arg in self.UNDEC:
             return 'UNDEC'
         else:
-            raise IllegalArgument()
+            raise IllegalArgument('The argumen "%s" does not exist' % repr(arg))
 
     def labelling_for(self, arg):
         lab = self.label_for(arg)
