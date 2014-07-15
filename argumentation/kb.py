@@ -7,7 +7,7 @@ from pyparsing import Word, Group, Optional, alphanums, alphas, delimitedList
 
 
 def get_log():
-    return logging.getLogger('arg')
+    return logging.getLogger('kb')
 
 
 """ Structures and functions for reading a knowledge base of rules for 
@@ -399,8 +399,12 @@ class KnowledgeBase:
         """ Remove a rule from the knowledge base. 
         Returns True on success, False if no such rule found.
         """
+        get_log().debug('Trying to delete rule "%s"' % str(rule))
         if not isinstance(rule, Rule): raise TypeError()
-        if rule.consequent not in self.rules: return False
+        if rule.consequent not in self.rules:
+            get_log().warning('Trying to delete non-existent rule "%s"'
+                              % str(rule))
+            return False
         rules = self.rules[rule.consequent]
         toRemove = None
         # do not match on name, just find the rule
@@ -410,12 +414,13 @@ class KnowledgeBase:
                 isinstance(rule, type(r))):
                 toRemove = r
                 break
-        if (len(toRemove) > 0):
+        if (toRemove is not None):
             print('deleting rule: ' + str(toRemove))
             rules.remove(toRemove)
             # reconstruct the arguments
             self._arguments = defaultdict(set)
             self.construct_arguments()
+            get_log().debug('Deleted rule "%s"' % str(rule))
             return True
         return False
 

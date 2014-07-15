@@ -400,6 +400,7 @@ class Dialog:
     # FIXME: throw an exception if a new rule would make KB inconsistent?
     def add(self, rule):
         """ Add a rule to the knowledge base. """
+        get_log().debug('Adding rule "%s"' % str(rule))
         if isinstance(rule, str):
             if '->' in rule:
                 rule = StrictRule.from_str(rule)
@@ -411,6 +412,7 @@ class Dialog:
 
     def delete(self, rule):
         """ Remove a rule from the knowledge base. """
+        get_log().debug('Deleting rule "%s"' % str(rule))
         if isinstance(rule, str):
             if '->' in rule:
                 rule = StrictRule.from_str(rule)
