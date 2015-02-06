@@ -443,7 +443,8 @@ class ArgumentationFramework:
 
     def _check_undercut(self, a1, a2):
         # a1 undercuts a2 if a2 has a rule with vulnerability that is neg a1
-        if self.debug: print('undercuts for %s' % str(a1))
+        get_log().debug('checking undercuts for ({0}) and ({1})'.
+                        format(a1, a2))
         for subargument in a2.subarguments:
             if (-a1.conclusion in subargument.vulnerabilities):
                 a1.plus.add(a2)
@@ -452,6 +453,8 @@ class ArgumentationFramework:
 
     def _check_rebut(self, a1, a2):
         #weakest link approach
+        get_log().debug('checking rebut for ({0}) and ({1})'.
+                        format(a1, a2))
         defeasibles_1 = list(a1.get_defeasible_rules())
         defeasibles_2 = list(a2.get_defeasible_rules())
         weights_1 = [x.weight for x in defeasibles_1 if x.weight != 0]
@@ -464,15 +467,13 @@ class ArgumentationFramework:
         if self.debug: print('rebuts for %s' % str(a1))
         for subargument in a2.subarguments:
             if (-a1.conclusion == subargument.conclusion):
-#                print('Rebut: ')
-#                print('\t %s; %s' % (str(a1), str(a2)))
-#                print('\t %s; %s' % (str(weights_1), str(weights_2)))
-                if a1.is_strict:
-                    a1.plus.add(a2)
-                    a2.minus.add(a1)
-                # depending on the ordering rules...if they are the same weight,
-                # they attack each other
-                elif ((not (w1 < w2) and (not a2.is_strict))):
+                if not (a1 < a2):
+                    get_log().debug('({0}) is more important '
+                                    'so it attacks ({1})'.format(a1, a2))
+                    get_log().debug('\tweights: {0} >= {1}'
+                                    .format(a1.weight, a2.weight))
+                    get_log().debug('\tweights: {0} >= {1}'
+                                    .format(w1, w2))
                     a1.plus.add(a2)
                     a2.minus.add(a1)
 

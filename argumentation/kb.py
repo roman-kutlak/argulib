@@ -172,6 +172,7 @@ class StrictRule(Rule):
     def __init__(self, name, antecedent, consequent):
         super().__init__(antecedent, consequent)
         self.name = name
+        self.weight = float("inf")
 
     def __repr__(self):
         return ('StrictRule %s' % str(self))
@@ -244,7 +245,7 @@ class DefeasibleRule(Rule):
         return text
 
     def __repr__(self):
-        return ('DefeasibleRule %s' % str(self))
+        return ('DefeasibleRule(w={0}) {1}'.format(self.weight, str(self)))
 
     @classmethod
     def from_str(cls, data):
@@ -650,6 +651,10 @@ class Argument:
         for a in self.rule.antecedent:
             yield a
 
+    @property
+    def weight(self):
+        return self.rule.weight
+
     def get_arguments(self):
         for c, args in self._arguments.items():
             for a in args:
@@ -692,11 +697,10 @@ class Argument:
                 self._arguments == other._arguments)
 
     def __lt__(self, other):
-        # TODO: this is interesting...lets order them based on the first
-        # defeasible rule
-        l1 = list(reversed(list(self.get_defeasible_rules())))
-        l2 = list(reversed(list(other.get_defeasible_rules())))
-        # as both arguments are not strict, they have to have at least 1 element
+        l1 = sorted([a.weight for a in self.subarguments])
+        l2 = sorted([a.weight for a in other.subarguments])
+        get_log().debug('a1.weights: {0}'.format(l1))
+        get_log().debug('a2.weights: {0}'.format(l2))
         return l1[0] < l2[0]
 
     def __str__(self):
