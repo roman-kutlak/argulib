@@ -10,8 +10,8 @@ def get_log():
     return logging.getLogger('kb')
 
 
-""" Structures and functions for reading a knowledge base of rules for 
-    constructing argument networks. 
+""" Structures and functions for reading a knowledge base of rules for
+    constructing argument networks.
 
 """
 
@@ -42,11 +42,11 @@ class Literal:
         """ Create a literal with a name.
         Keyword arguments:
         negated -- is the literal negated (eg, not a; default false)
-        
+
         """
         self.name = name
         self.negated = negated
-    
+
     def __eq__(self, other):
         """ Compare with a literal or a string. """
         if isinstance(other, str):
@@ -57,7 +57,7 @@ class Literal:
         return (isinstance(other, Literal) and
                 self.name == other.name and
                 self.negated == other.negated)
-    
+
     def __lt__(self, other):
         if self.name == other.name:
             return (self.negated < other.negated)
@@ -76,7 +76,7 @@ class Literal:
         if self.negated: str += "-"
         str += self.name
         return str
-    
+
     def __repr__(self):
         return ("Literal: %s" % str(self))
 
@@ -102,11 +102,11 @@ class Literal:
 class Rule:
     """ The class represents a rule for constructing arguments.
         This is a base class for Strict and Defesible rules.
-        
+
     """
     def __init__(self, antecedent, consequent):
-        """ A rule has to have antecedent and a consequent. 
-        
+        """ A rule has to have antecedent and a consequent.
+
             antecedent -- a list of Literals
             consequent -- a Literal
         """
@@ -130,10 +130,10 @@ class Rule:
         return (isinstance(other, Rule) and
                 self.antecedent == other.antecedent and
                 self.consequent == other.consequent)
-    
+
     def __len__(self):
         return len(self.antecedent)
-    
+
     def __hash__(self):
         value = hash(self.name)
         for a in self.antecedent:
@@ -175,10 +175,10 @@ class StrictRule(Rule):
 
     def __repr__(self):
         return ('StrictRule %s' % str(self))
-    
+
     def __lt__(self, other):
         return False
-    
+
     @classmethod
     def from_str(cls, data):
         if not isinstance(data, str):
@@ -284,7 +284,7 @@ class KnowledgeBase:
         self.strict_idx = 0
         self.argument_idx = 0
         self._arguments = defaultdict(set)
-    
+
     @classmethod
     def from_file(cls, file_name):
         if file_name is None:
@@ -298,7 +298,7 @@ class KnowledgeBase:
         del kb.defeasible_rules
         kb.construct_arguments()
         return kb
-    
+
     def __eq__(self, other):
         return (self.name == other.name and
                 self.rules == other.rules)
@@ -309,7 +309,7 @@ class KnowledgeBase:
         # sort the rules for easy reading
         defeasible.sort(key=lambda x: x.name)
         strict.sort(key=lambda x: x.name)
-    
+
         s = 'Name: %s\n' % self.name
         s += ('Strict Rules:\n\t%s\n' %
               '\n\t'.join(map(str, strict)))
@@ -317,15 +317,15 @@ class KnowledgeBase:
               '\n\t'.join(map(str, defeasible)))
         s += ('Arguments:\n\t%s\n' %
               '\n\t'.join(map(str, sorted(self.arguments, key=lambda x: x.name))))
-        
+
         return s
-    
+
     __repr__ = __str__
-    
+
     def __iter__(self):
         self.iterator = self.get_rules()
         return self
-    
+
     def __next__(self):
         return next(self.iterator)
 
@@ -333,7 +333,7 @@ class KnowledgeBase:
         for rule_set in self.rules.values():
             for r in rule_set:
                 yield r
-    
+
     def get_defeasible_rules(self):
         for r in self.get_rules():
             if isinstance(r, DefeasibleRule):
@@ -355,6 +355,9 @@ class KnowledgeBase:
 
     def check_consistency(self):
         pass
+
+    def recalculate(self):
+         self.construct_arguments()
 
     def order(self):
 #        print(self.orderings)
@@ -381,7 +384,7 @@ class KnowledgeBase:
         else:
             result = rule not in self.rules[rule.consequent]
             self.rules[rule.consequent].add(rule)
-            
+
         # re-compute arguments...
         if result and recalc: self.construct_arguments()
         return result
@@ -396,7 +399,7 @@ class KnowledgeBase:
             for r in self.rules[consequent]: return r
 
     def del_rule(self, rule):
-        """ Remove a rule from the knowledge base. 
+        """ Remove a rule from the knowledge base.
         Returns True on success, False if no such rule found.
         """
         get_log().debug('Trying to delete rule "%s"' % str(rule))
@@ -430,7 +433,7 @@ class KnowledgeBase:
             if r.name == name:
                 return r
         return None
-    
+
     def construct_arguments(self):
         get_log().debug('constructing arguments')
         done = set()
@@ -558,7 +561,7 @@ class KnowledgeBase:
         name = 'S%d' % self.strict_idx
         self.strict_idx += 1
         return name
-    
+
     def generate_argument_name(self, rule):
         name = 'A%d' % self.argument_idx
         self.argument_idx += 1
@@ -576,7 +579,7 @@ class KnowledgeBase:
                     f.write(str(r) + '\n')
             for o in self.orderings:
                 f.write(str(o))
-            
+
     def parse_file(self, file):
         line_no = 0
         for line in file:
@@ -584,7 +587,7 @@ class KnowledgeBase:
             line = line.partition('#')[0] # remove comments
             if line == '' or line == '\n':
                 continue
-            
+
             if '->' in line:
                 self.construct_strict_rule(line)
             elif '=>' in line:
@@ -593,7 +596,6 @@ class KnowledgeBase:
                 self.construct_ordering_rule(line)
             else:
                 print('Mallformed line %d: %s' % (line_no, line))
-
 
     def transpositions(self, rule):
         rules = list()
@@ -618,7 +620,7 @@ class KnowledgeBase:
 
 class Argument:
     """ Argument - based on Mikolaj Podlaszewski's code. """
-    
+
     def __init__(self, name, rule, arguments):
         self._framework = None
         self.name = name
@@ -628,17 +630,17 @@ class Argument:
         self.minus = set() # set of arguments attacking this argument
         self.is_strict = (isinstance(rule, StrictRule) and
                           self._arguments_are_strict())
-    
+
     @property
     def conclusion(self):
         return self.rule.consequent
-    
+
     @property
     def vulnerabilities(self):
         if isinstance(self.rule, DefeasibleRule):
             return self.rule.vulnerabilities
         return []
-    
+
     @property
     def antecedents(self):
         for arg in self.subarguments:
@@ -647,48 +649,48 @@ class Argument:
                     yield a
         for a in self.rule.antecedent:
             yield a
-    
+
     def get_arguments(self):
         for c, args in self._arguments.items():
             for a in args:
                 yield a
-    
+
     @property
     def subarguments(self):
         for a in self.get_arguments():
             for a_i in a.subarguments:
                 yield a_i
         yield self
-    
+
     def get_defeasible_rules(self):
         for a in self.subarguments:
             if isinstance(a.rule, DefeasibleRule):
                 yield a.rule
-    
+
     def _arguments_are_strict(self):
         for a in self.get_arguments():
             if not a.is_strict:
                 return False
         return True
-    
+
     def __iter__(self):
         self.iterator = self.subarguments
         return self
-    
+
     def __next__(self):
         return next(self.iterator)
-    
+
     def __hash__(self):
         value = hash(self.name)
         value ^= hash(self.rule)
         value ^= hash(tuple(sorted(self._arguments)))
         return value
-    
+
     def __eq__(self, other):
         return (self.name == other.name and
                 self.rule == other.rule and
                 self._arguments == other._arguments)
-    
+
     def __lt__(self, other):
         # TODO: this is interesting...lets order them based on the first
         # defeasible rule
@@ -696,12 +698,12 @@ class Argument:
         l2 = list(reversed(list(other.get_defeasible_rules())))
         # as both arguments are not strict, they have to have at least 1 element
         return l1[0] < l2[0]
-    
+
     def __str__(self):
 #        t = 'S_' if self.is_strict else 'D_'
         t = ''
         return ('%s%s: (%s)' % (t, self.name, str(self.rule)))
-    
+
     def __repr__(self):
         return 'Argument %s' % str(self)
 
@@ -746,6 +748,3 @@ def rule(string):
     else:
         rule = DefeasibleRule.from_str('==> ' + string)
     return rule
-
-
-

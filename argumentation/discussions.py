@@ -191,8 +191,8 @@ class GroundedDiscussion:
 
     def justify(self, arg):
         """ Return the rules of the reasoning chain
-        leading to the conclusion contained in the argument. 
-        
+        leading to the conclusion contained in the argument.
+
         """
         return [a.rule for a in arg.subarguments]
 
@@ -290,12 +290,12 @@ class Dialog:
     """ A class for supporting a dialog between the user and the computer.
     The class is responsible for parsing commands, updating a knowledge base,
     presenting arguments and reasoning.
-    
+
     The methods for handling commands start with do_
     (same as in Python's cmd.Cmd). As the class represents a dialog, the answers
     from do_ are strings. Any reasonable exceptions are handled inside the class
     and errors are returned as strings.
-    
+
     """
 
     def __init__(self, kb_path=None):
@@ -330,7 +330,7 @@ class Dialog:
     def find_rule(self, conclusion):
         """ Find a rule with the given conclusion.
         Return None if no such rule exists.
-        
+
         """
         if isinstance(conclusion, str):
             try:
@@ -344,11 +344,11 @@ class Dialog:
             rules = self.kb.rules[conclusion]
             # return the 'first' rule
             for x in rules: return x
-            
+
     def find_rules(self, conclusion):
         """ Find rules with the given conclusion.
         Return None if no such rule exists.
-        
+
         """
         if isinstance(conclusion, str):
             try:
@@ -365,7 +365,7 @@ class Dialog:
     def find_argument(self, conclusion):
         """ Find an argument with given conclusion.
         Return None if no such argument exists.
-        
+
         """
         if isinstance(conclusion, str):
             try:
@@ -379,11 +379,11 @@ class Dialog:
             args = self.kb._arguments[conclusion]
             # return the 'first' rule
             for x in args: return x
-            
+
     def find_arguments(self, conclusion):
         """ Find argument with given conclusion.
         Return None if no such argument exists.
-        
+
         """
         if isinstance(conclusion, str):
             try:
@@ -404,11 +404,17 @@ class Dialog:
         if isinstance(rule, str):
             if '->' in rule:
                 rule = StrictRule.from_str(rule)
+                result = self.kb.add_rule(rule)
+                rules = self.kb.transpositions(rule)
+                for r in rules:
+                    result |= self.kb.add_rule(rule, recalc=False)
+                self.kb.recalculate()
+                return result
             elif '=>' in rule:
                 rule = DefeasibleRule.from_str(rule)
+                return self.kb.add_rule(rule)
             else:
                 raise ParseError('"%s" is not a valid rule' % rule)
-        return self.kb.add_rule(rule)
 
     def delete(self, rule):
         """ Remove a rule from the knowledge base. """
@@ -509,7 +515,7 @@ class Dialog:
         if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
             rule = '==> ' + rule
         try:
-            res = self.delete(rule) 
+            res = self.delete(rule)
             if res:
                 self.recalculate()
                 return 'deleted %s' % str(rule)
@@ -518,7 +524,7 @@ class Dialog:
             return res
         except Exception as e:
             return str(e)
-        
+
     def recalculate(self):
         """ Recalculate the arguments from the knowledge base. """
         get_log().info('Recalculating aaf')
@@ -537,7 +543,7 @@ class Dialog:
 
     def parse(self, command):
         """ Parse a command from a string.
-        The commands have form: 
+        The commands have form:
             why in x  - discuss why is an argument with conclusion x labeled IN
             why out x - discuss why is an argument with conclusion x labeled OUT
             why p     - what reasoning lead to conclusion p
@@ -580,5 +586,3 @@ class Dialog:
         elif 'save' == tmp[0]:
             self.aaf.save_interesting_graph()
         else: return 'Unknown command'
-
-

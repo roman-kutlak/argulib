@@ -10,13 +10,12 @@ import logging
 import copy
 from .common import *
 from .kb import Literal
-import utils
 
 
 def get_log():
     return logging.getLogger('arg')
 
-    
+
 class Labelling:
     """Labelling (possibly partial)"""
     _framework, IN, OUT, UNDEC = None, None, None, None
@@ -69,7 +68,7 @@ class Labelling:
         return "Labelling: ({%s},{%s},{%s})" % (', '.join(IN),
                                                 ', '.join(OUT),
                                                 ', '.join(UNDEC))
-    
+
     def __str__(self):
         """Dialogue string representation: in(a,b)"""
         res = []
@@ -77,12 +76,12 @@ class Labelling:
         if IN:
             IN.sort()
             res.append('in(%s)' % ','.join(IN))
-        
+
         OUT = [a.name for a in self.OUT]
         if OUT:
             OUT.sort()
             res.append('out(%s)' % ','.join(OUT))
-    
+
         UNDEC = [a.name for a in self.UNDEC]
         if UNDEC:
             UNDEC.sort()
@@ -151,32 +150,32 @@ class Labelling:
         self.OUT &= other.OUT
         self._update_UNDEC()
         return self
-    
+
     def union(self, other):
         lab = copy.deepcopy(self)
         lab.union_update(other)
         return lab
-    
+
     def union_update(self, other):
         self.IN |= other.IN - self.OUT
         self.OUT |= other.OUT - self.IN
         self._update_UNDEC()
         return self
-    
+
     def is_sublabelling(self, other):
         return (self.IN <= other.IN and
                 self.OUT <= other.OUT and
                 self.UNDEC <= other.UNDEC)
-    
+
     def isLegallyOUT(self, arg):
         return arg.minus & self.IN
-    
+
     def isLegallyIN(self, arg):
         return arg.minus <= self.OUT
-    
+
     def is_legally_conlictfree_IN(self, arg):
         return arg.minus <= self.OUT and not arg.plus & self.IN
-    
+
     def isLegallyUNDEC(self, arg):
         return not arg.minus & self.IN and arg.minus & self.UNDEC
 
@@ -242,9 +241,9 @@ class Labelling:
 
     @property
     def label(self):
-        """ When the labelling contains arguments with the same label, 
+        """ When the labelling contains arguments with the same label,
             return the label. Otherwise, rais MethodNotApplicable.
-            
+
         """
         if (len(self.IN) == len(self)):
             return 'IN'
@@ -310,7 +309,7 @@ class Labelling:
             self.OUT -= illigalOut
             self.UNDEC |= illigalIn
             self.UNDEC |= illigalOut
-    
+
     def up_complete_update(self):
         counter = 0
         while True:
@@ -344,13 +343,13 @@ class Labelling:
                 L.UNDEC -= legally_OUT
             return L
         return False
-    
+
     def diffargs(self, other):
         """return set of args on which labellings differ"""
         return (self.IN & other.OUT) | (self.IN & other.UNDEC) | \
             (self.OUT & other.IN) | (self.OUT & other.UNDEC) | \
             (self.UNDEC & other.IN) | (self.UNDEC & other.OUT)
-    
+
     def split(self):
         """splits current labelling into single agrument labellings and returns as a list"""
         LL = []
@@ -358,13 +357,13 @@ class Labelling:
         for a in self.OUT: LL.append(self._framework.out_labelling([a]))
         for a in self.UNDEC: LL.append(self._framework.UNDEC_labelling([a]))
         return LL
-    
+
     def __len__(self):
         return len(self.IN) + len(self.OUT) + len(self.UNDEC)
-    
+
     def __sub__(self, other):
         return Labelling(self._framework,self.IN - other.IN, self.OUT - other.OUT, self.UNDEC - other.UNDEC)
-    
+
     def __and__(self, other):
         return Labelling(self._framework,self.IN & other.IN, self.OUT & other.OUT, self.UNDEC & other.UNDEC)
 
@@ -407,7 +406,7 @@ def is_justified(lab_arg, labelling):
 
 class ArgumentationFramework:
     def __init__(self, kb):
-        utils.get_log().info('Creating AAF')
+        get_log().info('Creating AAF')
         self.debug = False
         self._arguments = dict()
         self.kb = kb
@@ -427,21 +426,21 @@ class ArgumentationFramework:
 
     def find_argument(self, string):
         return self._arguments[string]
-        
+
     def _construct_graph(self, arguments):
         # now go through the arguments and figure out the attacks
         arguments = list(arguments)
         for a1 in arguments:
             for a2 in arguments:
-                if ((not a1.is_strict) and (not a2.is_strict)) :
-                    self._check_undercut(a1, a2)
-                    self._check_rebut(a1, a2)
-                if (a1.is_strict and (not a2.is_strict)) :
-                    self._check_undercut(a1, a2)
-                    self._check_strict_rebut(a1, a2)
+                # if ((not a1.is_strict) and (not a2.is_strict)) :
+                self._check_undercut(a1, a2)
+                self._check_rebut(a1, a2)
+                # if (a1.is_strict and (not a2.is_strict)) :
+                #     self._check_undercut(a1, a2)
+                #     self._check_strict_rebut(a1, a2)
             a1._framework = self
             self._arguments[a1.name] = a1
-    
+
     def _check_undercut(self, a1, a2):
         # a1 undercuts a2 if a2 has a rule with vulnerability that is neg a1
         if self.debug: print('undercuts for %s' % str(a1))
@@ -450,7 +449,7 @@ class ArgumentationFramework:
                 a1.plus.add(a2)
                 a2.minus.add(a1)
                 break
-    
+
     def _check_rebut(self, a1, a2):
         #weakest link approach
         defeasibles_1 = list(a1.get_defeasible_rules())
@@ -460,7 +459,7 @@ class ArgumentationFramework:
         # all rules are 0 by default so take them out of the equation
         w1 = -1 if len(weights_1) == 0 else min(weights_1)
         w2 = -1 if len(weights_2) == 0 else min(weights_2)
-        
+
         # a1 rebuts a2 if one of the subarguments of a2 has an opposite concl.
         if self.debug: print('rebuts for %s' % str(a1))
         for subargument in a2.subarguments:
@@ -468,20 +467,23 @@ class ArgumentationFramework:
 #                print('Rebut: ')
 #                print('\t %s; %s' % (str(a1), str(a2)))
 #                print('\t %s; %s' % (str(weights_1), str(weights_2)))
-                # depending on the ordering rules...if they are the same weight,
-                # they attack each other
-                if not (w1 < w2):
+                if a1.is_strict:
                     a1.plus.add(a2)
                     a2.minus.add(a1)
-    
-    def _check_strict_rebut(self, a1, a2):
-        if self.debug: print('rebuts for %s' % str(a1))
-        for subargument in a2.subarguments:
-            if (-a1.conclusion == subargument.conclusion):
-                a1.plus.add(a2)
-                a2.minus.add(a1)
-    
-    
+                # depending on the ordering rules...if they are the same weight,
+                # they attack each other
+                elif ((not (w1 < w2) and (not a2.is_strict))):
+                    a1.plus.add(a2)
+                    a2.minus.add(a1)
+
+    # def _check_strict_rebut(self, a1, a2):
+    #     if self.debug: print('strict rebuts for %s' % str(a1))
+    #     for subargument in a2.subarguments:
+    #         if (-a1.conclusion == subargument.conclusion):
+    #             a1.plus.add(a2)
+    #             a2.minus.add(a1)
+
+
     def __str__(self):
         tmp = lambda a: ('%s:\n\tattacking: %s\n\tattackers: %s'
                          % (str(a),
@@ -489,10 +491,10 @@ class ArgumentationFramework:
                             str(sorted([x.name for x in a.minus]))))
         args = sorted(self.arguments, key=lambda x: x.name)
         return '\n'.join([ tmp(a) for a in args])
-    
+
     def __repr__(self):
         return 'Argumentation Framework:\n%s' % str(self)
-    
+
     def save_graph(self):
         self._save_graph(list(self.arguments))
 
