@@ -278,12 +278,9 @@ class KnowledgeBase:
 
     def __init__(self, name=''):
         self.name = name
-        self.defeasible_rules = dict() # temporary dict for name:rule
         self.rules = dict() # actual rules
         self.orderings = list()
-        self.defeasible_idx = 0
-        self.strict_idx = 0
-        self.argument_idx = 0
+        self.reset_counts()
         self._arguments = collections.defaultdict(set)
 
     @classmethod
@@ -295,8 +292,6 @@ class KnowledgeBase:
         kb.order() # order before computing transpositions
         kb.close() # close under transposition
         kb.check_consistency() # raises exc. if not consistent
-        # delete redundant info
-        del kb.defeasible_rules
         kb.construct_arguments()
         return kb
 
@@ -331,6 +326,11 @@ class KnowledgeBase:
     def __next__(self):
         return next(self.iterator)
 
+    def reset_counts(self):
+        self.defeasible_idx = 0
+        self.strict_idx = 0
+        self.argument_idx = 0
+
     def get_rules(self):
         for rule_set in self.rules.values():
             for r in rule_set:
@@ -364,10 +364,10 @@ class KnowledgeBase:
     def order(self):
         get_log().debug('Assigning ordering weights based on {0}'.
                         format(self.orderings))
-        for n, r in self.defeasible_rules.items():
+        for r in self.get_defeasible_rules():
             w = 0
             for g in self.orderings:
-                if n in g:
+                if r.name in g:
                     r.weight = w
                     break
                 w += 1
@@ -554,12 +554,12 @@ class KnowledgeBase:
             rule = DefeasibleRule.from_str(string)
             if (rule.name == ""):
                 rule.name = self.generate_def_rule_name(rule)
-            if (rule.name in self.defeasible_rules and
-                rule != self.defeasible_rules[rule.name]):
-                raise KnowledgeBaseError(
-                    'Two different defeasible rules with same the name: %s'
-                     % rule.name)
-            self.defeasible_rules[rule.name] = rule
+            # if (rule.name in self.defeasible_rules and
+            #     rule != self.defeasible_rules[rule.name]):
+            #     raise KnowledgeBaseError(
+            #         'Two different defeasible rules with same the name: %s'
+            #          % rule.name)
+            # self.defeasible_rules[rule.name] = rule
             res = self.add_rule(rule, recalc=recalc)
             return (res, rule)
         except Exception as e:
