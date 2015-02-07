@@ -1,9 +1,9 @@
 import logging
 import random
 
-from .common import Move, PlayerType, role_str
+from .common import Move, PlayerType, role_str, oi_to_args
 from .common import NoMoreMoves, IllegalArgument, IllegalMove, Disagree
-from .aal import Labelling, is_justified, oi_to_args
+from .aal import Labelling, is_justified
 
 
 def get_log():
@@ -98,7 +98,7 @@ class Player:
         if 'OUT' == lab_arg.label:
             attackers = list(filter(lambda x: x.label != 'OUT', attackers))
         return list(attackers)
-    
+
     def _agree_on_label_or_rise(self, labelling, lab_arg):
         # first check that we agree on the label
         label = labelling.label_for(lab_arg.argument)
@@ -153,7 +153,7 @@ class HumanPlayer(Player):
 
 class ScepticalPlayer(Player):
     """ A player that keeps asking WHY unless an argument has no attackers. """
-    
+
     def _ask_why_or_concede(self, discussion, lab_arg):
         """ Ask about a reason for labeling the LOI the way it was labeled. """
         loi = discussion.open_issues[-1]
@@ -238,7 +238,3 @@ class SmartPlayer(Player):
                 return (self, Move.CONCEDE, loi)
             else:
                 return (self, Move.WHY, attacker)
-
-
-
-

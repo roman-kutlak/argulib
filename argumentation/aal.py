@@ -6,9 +6,10 @@
 
 """
 
-import logging
 import copy
-from .common import *
+import logging
+
+from .common import IllegalArgument, MethodNotApplicable
 from .kb import Literal
 
 
@@ -432,6 +433,7 @@ class ArgumentationFramework:
         arguments = list(arguments)
         for a1 in arguments:
             for a2 in arguments:
+                if a1 == a2: continue
                 # if ((not a1.is_strict) and (not a2.is_strict)) :
                 self._check_undercut(a1, a2)
                 self._check_rebut(a1, a2)
