@@ -80,7 +80,7 @@ class TestStrictRule(unittest.TestCase):
         cls.nc = Literal('c', negated=True)
 
     def test_basics(self):
-        r1 = StrictRule([self.a, self.b], self.nc)
+        r1 = StrictRule('', [self.a, self.b], self.nc)
         r2 = StrictRule.from_str('a, b --> -c')
         r3 = StrictRule.from_str('a, b --> c')
         r4 = StrictRule.from_str('a --> -c')
@@ -133,19 +133,18 @@ class TestKb(unittest.TestCase):
         kb = KnowledgeBase.from_file(test_kb_path)
         self.assertIsNotNone(kb)
         self.assertRaises(Exception, KnowledgeBase.from_file, 'foo')
-        print(kb)
 
     def test_del_rule(self):
         """ Test removing a rule. """
         kb = KnowledgeBase()
-        r = kb.rule_with_consequent('bar')
-        self.assertEqual(None, r)
+        r = kb.rules_with_consequent('bar')
+        self.assertEqual(set(), r)
         kb.add_rule(Rule.from_str('foo --> bar'))
-        r = kb.rule_with_consequent('bar')
-        self.assertEqual(Rule.from_str('foo --> bar'), r)
+        r = kb.rules_with_consequent('bar')
+        self.assertEqual(Rule.from_str('foo --> bar'), list(r)[0])
         kb.del_rule(Rule.from_str('foo --> bar'))
-        r = kb.rule_with_consequent('bar')
-        self.assertEqual(None, r)
+        r = kb.rules_with_consequent('bar')
+        self.assertEqual(set(), r)
 
 
 # if the module is loaded on its own, run the test

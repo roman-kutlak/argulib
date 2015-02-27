@@ -278,7 +278,7 @@ class KnowledgeBase:
 
     def __init__(self, name=''):
         self.name = name
-        self.rules = dict() # actual rules
+        self.rules = collections.defaultdict(set) # actual rules
         self.orderings = list()
         self.reset_counts()
         self._arguments = collections.defaultdict(set)
@@ -376,27 +376,18 @@ class KnowledgeBase:
         """ Add a new rule to the knowledge base. """
         if not isinstance(rule, Rule): raise TypeError()
         get_log().debug('adding rule "%s"' % str(rule))
-        result = False
-        if rule.consequent not in self.rules:
-            rules = set()
-            rules.add(rule)
-            self.rules[rule.consequent] = rules
-            result = True
-        else:
-            result = rule not in self.rules[rule.consequent]
-            self.rules[rule.consequent].add(rule)
+        result = rule not in self.rules[rule.consequent]
+        self.rules[rule.consequent].add(rule)
         # re-compute arguments...
         if result and recalc: self.construct_arguments()
         return result
 
-    def rule_with_consequent(self, consequent):
-        """ Return a rule with the given consequent or None. """
+    def rules_with_consequent(self, consequent):
+        """ Return a (possibly empty) set of rules with the consequent. """
         if isinstance(consequent, str):
             consequent = Literal.from_str(consequent)
-        if consequent not in self.rules:
-            return None
-        else:
-            for r in self.rules[consequent]: return r
+        # defaultdict wil return set() if consequent not in rules
+        return self.rules[consequent]
 
     def del_rule(self, rule):
         """ Remove a rule from the knowledge base.
@@ -418,7 +409,6 @@ class KnowledgeBase:
                 toRemove = r
                 break
         if (toRemove is not None):
-            print('deleting rule: ' + str(toRemove))
             rules.remove(toRemove)
             # reconstruct the arguments
             self._arguments = collections.defaultdict(set)
@@ -554,12 +544,6 @@ class KnowledgeBase:
             rule = DefeasibleRule.from_str(string)
             if (rule.name == ""):
                 rule.name = self.generate_def_rule_name(rule)
-            # if (rule.name in self.defeasible_rules and
-            #     rule != self.defeasible_rules[rule.name]):
-            #     raise KnowledgeBaseError(
-            #         'Two different defeasible rules with same the name: %s'
-            #          % rule.name)
-            # self.defeasible_rules[rule.name] = rule
             res = self.add_rule(rule, recalc=recalc)
             return (res, rule)
         except Exception as e:

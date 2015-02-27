@@ -171,11 +171,17 @@ class Dialog:
         if isinstance(rule, str):
             if '->' in rule:
                 rule = StrictRule.from_str(rule)
+                rules = self.kb.transpositions(rule)
+                rules.append(rule)
             elif '=>' in rule:
                 rule = DefeasibleRule.from_str(rule)
+                rules = {rule}
             else:
                 raise ParseError('"%s" is not a valid rule' % rule)
-        return self.kb.del_rule(rule)
+        result = False
+        for r in rules:
+            result |= self.kb.del_rule(r)
+        return result
 
 
     #############  Commands #############
