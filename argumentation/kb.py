@@ -130,6 +130,7 @@ def check_list_of_type(lst, cls, msg=''):
 
 STRICT_RULE = 0
 DEFEASIBLE_RULE = 1
+ORDERING_RULE = 2
 
 
 class StrictRule:
@@ -367,7 +368,31 @@ class DefeasibleRule:
                              % (repr(data), str(e)))
 
 
-# TODO: implement a class for ordering
+class Ordering:
+    def __init__(self, *data):
+        """Initialise orderings from a list of tuples. """
+        self.type = ORDERING_RULE
+        self.data = check_list_of_type(list(data), tuple)
+
+    @classmethod
+    def from_str(Cls, data):
+        if not isinstance(data, str):
+            raise ParseError('"%s" is not a string' % repr(data))
+        try:
+            tmp = []
+            ords = orderings.parseString(data)
+            for i in range(len(ords) - 1):
+                tmp.append( (ords[i], ords[i+1]) )
+            return Cls(*tmp)
+        except Exception as e:
+            raise ParseError('"%s" is not a preference rule\n\t error: %s'
+                             % (data, str(e)))
+
+    def __str__(self):
+        return str(self.data)
+
+    def __eq__(self, other):
+        return (self.data == other.data)
 
 
 def make_rule(rule):
@@ -377,6 +402,8 @@ def make_rule(rule):
             rule = StrictRule.from_str(rule)
         elif '=>' in rule:
             rule = DefeasibleRule.from_str(rule)
+        elif '<' in rule:
+            rule = Ordering.from_str(rule)
         else:
             raise ParseError('"%s" is not a valid rule' % rule)
         return rule
@@ -595,14 +622,9 @@ class KnowledgeBase:
         not formatted correctly) or a Rule (strict or defeasible).
         
         """
-        if '->' in line:
-            self.add_rule(make_rule(line))
-        elif '=>' in line:
-            self.add_rule(make_rule(line))
-        elif '<' in line:
-            self.add_preference_rules(line)
-        else:
-            raise KnowledgeBaseError('"%s" is not a rule.' % line)
+        rule = make_rule(line)
+        self.add_rule(rule)
+        return rule
     
     def add_rule(self, rule, recalc=True):
         """ Try to add a new rule in the knowledge base.
@@ -618,6 +640,8 @@ class KnowledgeBase:
             self._add_strict_rule(rule)
         elif DEFEASIBLE_RULE == rule.type:
             self._add_defeasible_rule(rule)
+        elif isinstance(rule, Ordering):
+            self.add_ordering(rule)
         else:
             msg = 'Unknown rule type for rule "%s"'
             raise KnowledgeBaseError(msg % str(rule))
@@ -856,10 +880,7 @@ class KnowledgeBase:
         """ Return all rules with the given consequent or None. """
         if isinstance(consequent, str):
             consequent = Literal.from_str(consequent)
-        if consequent not in self._rules:
-            return set()
-        else:
-            return self._rules[consequent]
+        return self._wm[consequent]
 
     def get_proofs_for_rule(self, rule):
         """ Return a proofs that uses `rule` as the top rule or `set()`."""
@@ -870,17 +891,16 @@ class KnowledgeBase:
                 result.add(p)
         return result
 
-    def add_preference_rules(self, line):
+    def add_ordering(self, ord):
         """ Parse the line containing names of rules and their preferences. 
         format: r1, r2 < r3 < r4, r5 ...
         Throws ParseError when the format is wrong and 
         KnowledgeBaseError when preferences are inconsistent.
         
         """
-        ords = orderings.parseString(line)
-        get_log().debug('Adding preferences: %s' % str(ords))
-        for i in range(len(ords) - 1):
-            self.add_preference_rule(ords[i], ords[i+1])
+        get_log().debug('Adding preferences: %s' % str(ord))
+        for a, b in ord.data:
+            self.add_preference_rule(a, b)
 
     def add_preference_rule(self, lower, higher):
         """ Insert preferences for defeasible rules.
@@ -915,7 +935,8 @@ class KnowledgeBase:
     def more_preferred(self, rule_a, rule_b):
         """ Return True if rule 'a' is more preferred than rule 'b'. """
         # a is preferred over b if there is a path from a to b
-        return (self._prefs.find_path(rule_a.name, rule_b.name) is not None)
+        path = self._prefs.find_path(rule_a.name, rule_b.name)
+        return (path is not None and path != [rule_a.name])
 
     def preference_order(self, rule_a, rule_b):
         """ Return the order of preferences between rule_a and rule_b or None.
@@ -951,10 +972,6 @@ class KnowledgeBase:
         self.proof_idx += 1
         return name
 
-    def read_file(self, file_name):
-        with open(file_name, "r") as f:
-            self.parse_file(f)
-
     def save_into_file(self, file_name):
         with open(file_name, "w") as f:
             for consequent, rules in self._rules.items():
@@ -964,7 +981,11 @@ class KnowledgeBase:
             for k, vs in self._prefs.items():
                 if vs:
                     f.write('{k} < {vs}\n'.format(k=k, vs=', '.join(vs)))
-            
+
+    def read_file(self, file_name):
+        with open(file_name, "r") as f:
+            self.parse_file(f)
+
     def parse_file(self, file):
         line_no = 0
         self.batch = True

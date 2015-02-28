@@ -195,6 +195,7 @@ class ArgumentationFramework:
         for proof in a2.proofs:
             if (-a1.conclusion == proof.conclusion):
                 if not (self.more_preferred(proof, a1)):
+                    get_log().debug('...rebut accepted')
                     a1.plus.add(a2)
                     a2.minus.add(a1)
 

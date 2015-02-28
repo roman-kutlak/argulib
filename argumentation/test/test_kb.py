@@ -131,10 +131,18 @@ class TestKb(unittest.TestCase):
 
     def test_add_rule(self):
         kb = KnowledgeBase()
-        rule = make_rule('--> p')
-        kb.add_rule(rule)
-        p = Proof('', rule, {})
-        self.assertEqual({p}, kb.proofs_for(Literal('p')))
+        r = make_rule('--> r')
+        kb.add_rule(r)
+        p = Proof('', r, {})
+        self.assertEqual({p}, kb.proofs_for(Literal('r')))
+        rs = make_rule('r --> s')
+        kb.add_rule(rs)
+        # added a contraposition
+        self.assertEqual(3, len(list(kb.rules)))
+        tmp = kb.rules_with_consequent(Literal('r', negated=True))
+        self.assertEqual(tmp, {make_rule('-s --> -r')})
+        kb.construct_rule('s ==> t')
+        self.assertEqual(4, len(list(kb.rules)))
     
     def test_del_rule(self):
         """ Test removing a rule. """
@@ -148,6 +156,47 @@ class TestKb(unittest.TestCase):
         r = kb.rules_with_consequent('bar')
         self.assertEqual(set(), r)
 
+    def test_ordering(self):
+        kb = KnowledgeBase()
+        r1 = kb.construct_rule('R1: p ==>  q')
+        r2 = kb.construct_rule('R2: r ==> -q')
+        res = kb.more_preferred(r1, r2)
+        self.assertFalse(res)
+        res = kb.more_preferred(r2, r1)
+        self.assertFalse(res)
+
+        kb.construct_rule('R1 < R2')
+        self.assertFalse(kb.more_preferred(r1, r2))
+        self.assertTrue(kb.more_preferred(r2, r1))
+
+        kb.construct_rule('R1 < R2, R3, R4 < R5, R6')
+        r3 = kb.construct_rule('R3: ==> r3')
+        r4 = kb.construct_rule('R4: ==> r4')
+        r5 = kb.construct_rule('R5: ==> r5')
+        r6 = kb.construct_rule('R6: ==> r6')
+        # r6 beats almost anything
+        self.assertTrue(kb.more_preferred(r6, r1))
+        self.assertTrue(kb.more_preferred(r6, r2))
+        self.assertTrue(kb.more_preferred(r6, r3))
+        self.assertTrue(kb.more_preferred(r6, r4))
+        self.assertFalse(kb.more_preferred(r6, r5))
+        self.assertFalse(kb.more_preferred(r6, r6))
+        # r6 beats almost anything
+        self.assertTrue(kb.more_preferred(r5, r1))
+        self.assertTrue(kb.more_preferred(r5, r2))
+        self.assertTrue(kb.more_preferred(r5, r3))
+        self.assertTrue(kb.more_preferred(r5, r4))
+        self.assertFalse(kb.more_preferred(r5, r5))
+        self.assertFalse(kb.more_preferred(r5, r6))
+        # r3 is more preferred than r1 but less than r5, r6
+        self.assertTrue(kb.more_preferred(r3, r1))
+        self.assertFalse(kb.more_preferred(r3, r2))
+        self.assertFalse(kb.more_preferred(r3, r3))
+        self.assertFalse(kb.more_preferred(r3, r4))
+        self.assertFalse(kb.more_preferred(r3, r5))
+        self.assertFalse(kb.more_preferred(r3, r6))
+
+
 ################################################################################
 
 # if the module is loaded on its own, run the test
@@ -155,24 +204,3 @@ if __name__ == '__main__':
     import logging.config
     logging.basicConfig(level=logging.DEBUG)
     unittest.main()
-
-
-p = make_rule('--> p')
-q = make_rule('--> q')
-r = make_rule('p, q --> r')
-
-p1 = Proof('p1', p, {})
-p2 = Proof('p2', q, {})
-p3 = Proof('p3', r, { Literal('p') : p1, Literal('q') : p2 })
-
-p4 = Proof('p4', make_rule('r --> s'), { Literal('r') : p3 })
-
-kb = KnowledgeBase()
-kb.construct_rule('==> p')
-kb.construct_rule('--> r')
-kb.construct_rule('p ==> q')
-kb.construct_rule('r --> q')
-kb.construct_rule('foo --> bar')
-kb.construct_rule('q =(-baz)=> bar')
-kb.construct_rule('q ==> foo')
-kb.construct_rule(' ==> -baz')
