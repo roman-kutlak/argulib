@@ -915,7 +915,9 @@ class KnowledgeBase:
     def more_preferred(self, rule_a, rule_b):
         """ Return True if rule 'a' is more preferred than rule 'b'. """
         # a is preferred over b if there is a path from a to b
-        return (self._prefs.find_path(rule_a.name, rule_b.name) is not None)
+        if not rule_a.name: return None
+        path = self._prefs.find_path(rule_a.name, rule_b.name)
+        return (path is not None)
 
     def preference_order(self, rule_a, rule_b):
         """ Return the order of preferences between rule_a and rule_b or None.
@@ -961,8 +963,9 @@ class KnowledgeBase:
                 f.write('# rules with consequent "%s":\n' % str(consequent))
                 for r in rules:
                     f.write(str(r) + '\n')
-            for o in self.orderings:
-                f.write(str(o))
+            for k, vs in self._prefs.items():
+                if vs:
+                    f.write('{k} < {vs}\n'.format(k=k, vs=', '.join(vs)))
             
     def parse_file(self, file):
         line_no = 0
