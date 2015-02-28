@@ -6,7 +6,7 @@ from .common import NoMoreMoves, IllegalArgument, IllegalMove, Disagree
 from .aal import Labelling, is_justified
 
 
-def get_log():
+def log():
     return logging.getLogger('arg')
 
 

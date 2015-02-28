@@ -16,7 +16,7 @@ def trim(str):
     return ' '.join(str.strip().split())
 
 
-def get_log():
+def log():
     """ Return the default program logger. """
     return logging.getLogger('argumentation')
 

@@ -22,7 +22,7 @@ from argumentation.players import HumanPlayer, PlayerType
 from argumentation.discussions import GroundedDiscussion2
 
 
-def get_log():
+def log():
     return logging.getLogger('arg')
 
 Debug = False
@@ -67,7 +67,7 @@ class Dialog:
         """
         if self.discussion is None: self._init_discussion()
         args = self.find_arguments(conclusion)
-        get_log().info(str(args))
+        log().info(str(args))
         if args is None: return False
         lab = self.discussion.labelling.label_for
         for arg in args:
@@ -148,7 +148,7 @@ class Dialog:
     # FIXME: throw an exception if a new rule would make KB inconsistent?
     def add(self, rule_str):
         """ Add a rule to the knowledge base. """
-        get_log().debug('Adding rule "%s"' % str(rule_str))
+        log().debug('Adding rule "%s"' % str(rule_str))
         if isinstance(rule_str, str):
             if '->' in rule_str:
                 result, rule = self.kb.construct_strict_rule(rule_str)
@@ -167,7 +167,7 @@ class Dialog:
 
     def delete(self, rule):
         """ Remove a rule from the knowledge base. """
-        get_log().debug('Deleting rule "%s"' % str(rule))
+        log().debug('Deleting rule "%s"' % str(rule))
         if isinstance(rule, str):
             if '->' in rule:
                 rule = StrictRule.from_str(rule)
@@ -284,7 +284,7 @@ class Dialog:
 
     def recalculate(self):
         """ Recalculate the arguments from the knowledge base. """
-        get_log().info('Recalculating aaf')
+        log().info('Recalculating aaf')
         self.aaf = ArgumentationFramework(self.kb)
         self.discussion = None
 
@@ -312,7 +312,7 @@ class Dialog:
             concede   - concede to the last open issue
 
         """
-        get_log().info('parsing command: "%s"' % command)
+        log().info('parsing command: "%s"' % command)
         tmp = command.strip().split(' ')
 #        print('User command: %s' % str(tmp))
         if len(tmp) < 2:

@@ -6,7 +6,7 @@ import pyparsing
 from pyparsing import Word, Group, Optional, alphanums, delimitedList
 
 
-def get_log():
+def log():
     return logging.getLogger('kb')
 
 
@@ -362,7 +362,7 @@ class KnowledgeBase:
          self.construct_arguments()
 
     def order(self):
-        get_log().debug('Assigning ordering weights based on {0}'.
+        log().debug('Assigning ordering weights based on {0}'.
                         format(self.orderings))
         for r in self.get_defeasible_rules():
             w = 0
@@ -375,7 +375,7 @@ class KnowledgeBase:
     def add_rule(self, rule, recalc=True):
         """ Add a new rule to the knowledge base. """
         if not isinstance(rule, Rule): raise TypeError()
-        get_log().debug('adding rule "%s"' % str(rule))
+        log().debug('adding rule "%s"' % str(rule))
         result = rule not in self.rules[rule.consequent]
         self.rules[rule.consequent].add(rule)
         # re-compute arguments...
@@ -393,10 +393,10 @@ class KnowledgeBase:
         """ Remove a rule from the knowledge base.
         Returns True on success, False if no such rule found.
         """
-        get_log().debug('Trying to delete rule "%s"' % str(rule))
+        log().debug('Trying to delete rule "%s"' % str(rule))
         if not isinstance(rule, Rule): raise TypeError()
         if rule.consequent not in self.rules:
-            get_log().warning('Trying to delete non-existent rule "%s"'
+            log().warning('Trying to delete non-existent rule "%s"'
                               % str(rule))
             return False
         rules = self.rules[rule.consequent]
@@ -413,7 +413,7 @@ class KnowledgeBase:
             # reconstruct the arguments
             self._arguments = collections.defaultdict(set)
             self.construct_arguments()
-            get_log().debug('Deleted rule "%s"' % str(rule))
+            log().debug('Deleted rule "%s"' % str(rule))
             return True
         return False
 
@@ -425,7 +425,7 @@ class KnowledgeBase:
         return None
 
     def construct_arguments(self):
-        get_log().debug('constructing arguments')
+        log().debug('constructing arguments')
         old_size = -1
         rules = list(self.get_rules())
         rules.sort(key=lambda x: x.name)
@@ -433,38 +433,38 @@ class KnowledgeBase:
             # how many proofs we are starting from in this iteration
             old_size = len(self)
             for r in rules:
-                get_log().debug('Current rule %s' % repr(r))
+                log().debug('Current rule %s' % repr(r))
                 proofs = dict()
                 try:
                     for a in r.antecedent:
                         if a in self._arguments:
                             proofs[a] = self._arguments[a]
                         else:
-#                        get_log().debug('no proof for antecedent %s' % str(a))
+#                        log().debug('no proof for antecedent %s' % str(a))
                             break
                     # do we have a proof for all antecedents?
                     if len(proofs) == len(r.antecedent):
-                        get_log().debug('\tadding argument with conclusion %s'
+                        log().debug('\tadding argument with conclusion %s'
                                         % str(r.consequent))
                         self.add_argument(r, proofs)
                 except KeyError as e:
-                    get_log().debug('\tno proof for antecedent %s' % str(e))
+                    log().debug('\tno proof for antecedent %s' % str(e))
                 except Exception as e:
-                    get_log().exception(e)
+                    log().exception(e)
 
     def __len__(self):
         """Return the number of arguments. """
         return seq_len(self.arguments)
 
     def add_argument(self, rule, proofs):
-        get_log().debug('adding an argument for rule "%s" '
+        log().debug('adding an argument for rule "%s" '
                         'using the following proofs: %s' %
                          (str(rule), str(proofs)))
         for conclusion, arguments in proofs.items():
-            get_log().debug('proof of "{0}": "{1}"'.
+            log().debug('proof of "{0}": "{1}"'.
                             format(conclusion, arguments))
 
-        get_log().debug('Current state:\n{0}'.format(self))
+        log().debug('Current state:\n{0}'.format(self))
         # if the consequent appears as any of the antecedents break (rule loop)
         for proof_set in proofs.values():
             to_delete = list()
@@ -476,7 +476,7 @@ class KnowledgeBase:
 #                      % (str(p), str(proof_set)))
                 proof_set.remove(p)
             if len(proof_set) == 0:
-                get_log().debug('_rule {0} not applied to avoid loop.'.
+                log().debug('_rule {0} not applied to avoid loop.'.
                                 format(rule))
                 return
 
@@ -501,7 +501,7 @@ class KnowledgeBase:
                 else:
                     name = name_prefix
                 a.name = name
-                get_log().debug('Created a new argument: %s' % repr(a))
+                log().debug('Created a new argument: %s' % repr(a))
                 self._arguments[rule.consequent].add(a)
 
     def proof_generator(self, proof_set):
@@ -509,7 +509,7 @@ class KnowledgeBase:
         result = []
         tuples = [(k, p) for k, v in proof_set.items() for p in v]
         candidates = list(itertools.combinations(tuples, len(proof_set)))
-        get_log().debug('unique_proof candidates: {0}'.format(candidates))
+        log().debug('unique_proof candidates: {0}'.format(candidates))
         # some of the candidates will not be correct proofs
         #  - e.g., one antecedent can have 2 proofs, meaning that
         #    one antecedent will be missing
@@ -519,7 +519,7 @@ class KnowledgeBase:
                 r[k] = v
             if len(r) == len(proof_set):
                 result.append(r)
-        get_log().debug('unique_proofs: {0}'.format(result))
+        log().debug('unique_proofs: {0}'.format(result))
         return result
 
     @property
@@ -536,7 +536,7 @@ class KnowledgeBase:
             res = self.add_rule(rule, recalc=recalc)
             return (res, rule)
         except Exception as e:
-            get_log().exception('CSR: Exception: %s' % e)
+            log().exception('CSR: Exception: %s' % e)
             raise KnowledgeBaseError from e
 
     def construct_defeasible_rule(self, string, recalc=False):
@@ -547,7 +547,7 @@ class KnowledgeBase:
             res = self.add_rule(rule, recalc=recalc)
             return (res, rule)
         except Exception as e:
-            get_log().exception('CDR: Exception: %s' % e)
+            log().exception('CDR: Exception: %s' % e)
             raise KnowledgeBaseError from e
 
     def construct_ordering_rule(self, string, recalc=False):
@@ -559,7 +559,7 @@ class KnowledgeBase:
             if recalc: self.order()
             return (True, [list(o) for o in ords])
         except Exception as e:
-            get_log().exception('Ord: Exception: %s' % e)
+            log().exception('Ord: Exception: %s' % e)
             raise KnowledgeBaseError from e
 
     def generate_def_rule_name(self, rule):
@@ -712,8 +712,8 @@ class Argument:
     def __lt__(self, other):
         l1 = sorted([a.weight for a in self.subarguments])
         l2 = sorted([a.weight for a in other.subarguments])
-        get_log().debug('a1.weights: {0}'.format(l1))
-        get_log().debug('a2.weights: {0}'.format(l2))
+        log().debug('a1.weights: {0}'.format(l1))
+        log().debug('a2.weights: {0}'.format(l2))
         return l1[0] < l2[0]
 
     def __str__(self):

@@ -7,7 +7,7 @@ from .common import Move, role_str, move_str, PlayerType
 from .common import IllegalArgument, IllegalMove, NotYourMove
 
 
-def get_log():
+def log():
     return logging.getLogger('arg')
 
 class GroundedDiscussion:
