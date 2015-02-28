@@ -10,8 +10,8 @@ import copy
 import logging
 from collections import defaultdict
 
-from .common import *
-from .kb import Literal
+from .common import IllegalArgument, MethodNotApplicable
+from .kb import Literal, KnowledgeBase
 
 
 def get_log():
@@ -133,8 +133,8 @@ class ArgumentationFramework:
             for a in arguments:
                 yield a
 
-    def find_argument_by_name(self, string):
-        """ Return the argument with the name "string" or None. """
+    def find_argument_by_name(self, name):
+        """ Return the argument with `name` or None. """
         for a in self.arguments:
             if a.name == name: return a
         return None
@@ -154,73 +154,56 @@ class ArgumentationFramework:
     def _construct_graph(self, proofs):
         """ Construct the graph of the arguments for given proofs. """
         get_log().debug('Constructing arguments')
-#        arguments = []
+        arguments = []
         for p in proofs:
             a = Argument(p, self)
             self._arguments[a.consequent].add(a)
-        self.reconstruct_graph()
+            arguments.append(a)
+        self.reconstruct_graph(sorted(arguments))
 
-    def reconstruct_graph(self):
+    def reconstruct_graph(self, arguments):
         """ Take the existing arguments and re-create the attacks. """
         get_log().debug('Reconstructing the graph...')
         self._plus.clear()
         self._minus.clear()
-        arguments = list(self.arguments)
         # clear the attack relations first
         for a in arguments: a.clear()
-        # now calculate them again
         for a1 in arguments:
             for a2 in arguments:
-                if (a1.is_defeasible() and a2.is_defeasible()) :
-                    self._check_undercut(a1, a2)
-                    self._check_rebut(a1, a2)
-                if (a1.is_strict() and a2.is_defeasible()) :
-                    self._check_undercut(a1, a2)
-                    self._check_strict_rebut(a1, a2)
+                if a1 == a2 or a2.is_strict(): continue
+                self._check_undercut(a1, a2)
+                self._check_rebut(a1, a2)
+            a1._framework = self
+
+    # TODO: add the proof which is being attacked to `plus` and `minus`
     
     def _check_undercut(self, a1, a2):
         # a1 undercuts a2 if a2 has a rule with vulnerability that is neg a1
-        get_log().debug('  checking undercuts for %s' % str(a1))
+        get_log().debug('checking undercuts for ({0}) and ({1})'.
+                        format(a1, a2))
         for proof in a2.proofs:
             if (-a1.conclusion in proof.vulnerabilities):
-                a1.plus.add( (a2, proof) )
-                a2.minus.add( (a1, proof) )
-                # this might be faster...in the future
-                self._plus[a1].add(a2)
-                self._minus[a2].add(a1)
+                a1.plus.add(a2)
+                a2.minus.add(a1)
+                break
 
     def _check_rebut(self, a1, a2):
-        get_log().debug('  checking rebuts for %s' % str(a1))
         #weakest link approach
-        # FIXME: why do I have these two variables?
-        defeasibles_1 = list(a1.defeasible_rules)
-        defeasibles_2 = list(a2.defeasible_rules)
-        # a1 rebuts a2 if one of the subarguments of a2 has an opposite concl.
-        get_log().debug('    rebuts for %s' % str(a1))
+        get_log().debug('checking rebut for ({0}) and ({1})'.
+                        format(a1, a2))
+        # a1 rebuts a2 if one of the subproofs of a2 has an opposite concl.
         for proof in a2.proofs:
-            if (-a1.conclusion == proof.consequent):
-                # depending on the preference rules...
-                #   if they are the same weight they attack each other
-                if not (self.more_preferred(a2, a1)):
-                    a1.plus.add( (a2, proof) )
-                    a2.minus.add( (a1, proof) )
-                    # this might be faster...in the future
-                    self._plus[a1].add(a2)
-                    self._minus[a2].add(a1)
-    
-    def _check_strict_rebut(self, a1, a2):
-        get_log().debug('rebuts for %s' % str(a1))
-        for proof in a2.proofs:
-            if (-a1.conclusion == proof.consequent):
-                a1.plus.add( (a2, proof) )
-                a2.minus.add( (a1, proof) )
-                # this might be faster...in the future
-                self._plus[a1].add(a2)
-                self._minus[a2].add(a1)
+            if (-a1.conclusion == proof.conclusion):
+                if not (self.more_preferred(proof, a1)):
+                    a1.plus.add(a2)
+                    a2.minus.add(a1)
 
     def more_preferred(self, a, b):
         """ Return True if according to the KB a is preferred over b. """
-        return self.kb.more_preferred(a, b)
+        result = self.kb.more_preferred(a.rule, b.rule)
+        get_log().debug('{0} is {1}more preferred than {2}'
+            .format(a.rule, ('' if result else 'not '), b.rule))
+        return result
     
     def __str__(self):
         tmp = lambda a: ('%s:\n\tattacking: %s\n\tattackers: %s'

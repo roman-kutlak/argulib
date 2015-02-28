@@ -961,8 +961,9 @@ class KnowledgeBase:
                 f.write('# rules with consequent "%s":\n' % str(consequent))
                 for r in rules:
                     f.write(str(r) + '\n')
-            for o in self.orderings:
-                f.write(str(o))
+            for k, vs in self._prefs.items():
+                if vs:
+                    f.write('{k} < {vs}\n'.format(k=k, vs=', '.join(vs)))
             
     def parse_file(self, file):
         line_no = 0
