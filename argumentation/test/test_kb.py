@@ -1,13 +1,16 @@
 import unittest
 
-from argumentation.kb import Literal, Rule, StrictRule, DefeasibleRule
-from argumentation.kb import Argument, KnowledgeBase
+from argumentation.kb import Literal, StrictRule, DefeasibleRule, make_rule
+from argumentation.kb import Proof, KnowledgeBase
 from argumentation.kb import ParseError
 
 
-test_kb_path = './argumentation/test/data/test.kb.txt'
+test_kb_path = './argumentation/test/data/tandem.kb.txt'
 
 #o_str = "r1, r2, r3 < r4, r5 < r6"
+
+
+######################### Test parsing functions ###############################
 
 
 class TestLiteral(unittest.TestCase):
@@ -80,7 +83,7 @@ class TestStrictRule(unittest.TestCase):
         cls.nc = Literal('c', negated=True)
 
     def test_basics(self):
-        r1 = StrictRule('', [self.a, self.b], self.nc)
+        r1 = StrictRule([self.a, self.b], self.nc, '')
         r2 = StrictRule.from_str('a, b --> -c')
         r3 = StrictRule.from_str('a, b --> c')
         r4 = StrictRule.from_str('a --> -c')
@@ -101,7 +104,7 @@ class TestDefeasibleRule(unittest.TestCase):
         cls.nc = Literal('c', negated=True)
 
     def test_basics(self):
-        r1 = DefeasibleRule('r1', [self.a, self.b], self.nc)
+        r1 = DefeasibleRule([self.a, self.b], self.nc, name='r1')
         r2 = DefeasibleRule.from_str('a, b ==> -c')
         r3 = DefeasibleRule.from_str('a, b ==> c')
         r4 = DefeasibleRule.from_str('a ==> -c')
@@ -116,14 +119,6 @@ class TestDefeasibleRule(unittest.TestCase):
         self.assertEqual(self.nc, r5.consequent)
 
 
-class TestArgument(unittest.TestCase):
-    """ Test the functionality of class Argument. """
-
-    def test_basics(self):
-        pass
-
-
-# TODO: add type checking to the KnowledgeBase
 class TestKb(unittest.TestCase):
     """ Tests for KnowledgeBase functionality. """
 
@@ -134,20 +129,50 @@ class TestKb(unittest.TestCase):
         self.assertIsNotNone(kb)
         self.assertRaises(Exception, KnowledgeBase.from_file, 'foo')
 
+    def test_add_rule(self):
+        kb = KnowledgeBase()
+        rule = make_rule('--> p')
+        kb.add_rule(rule)
+        p = Proof('', rule, {})
+        self.assertEqual({p}, kb.proofs_for(Literal('p')))
+    
     def test_del_rule(self):
         """ Test removing a rule. """
         kb = KnowledgeBase()
         r = kb.rules_with_consequent('bar')
         self.assertEqual(set(), r)
-        kb.add_rule(Rule.from_str('foo --> bar'))
+        kb.construct_rule('foo --> bar')
         r = kb.rules_with_consequent('bar')
-        self.assertEqual(Rule.from_str('foo --> bar'), list(r)[0])
-        kb.del_rule(Rule.from_str('foo --> bar'))
+        self.assertEqual({make_rule('foo --> bar')}, r)
+        kb.del_rule(make_rule('foo --> bar'))
         r = kb.rules_with_consequent('bar')
         self.assertEqual(set(), r)
 
+################################################################################
 
 # if the module is loaded on its own, run the test
 if __name__ == '__main__':
+    import logging.config
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()
 
+
+p = make_rule('--> p')
+q = make_rule('--> q')
+r = make_rule('p, q --> r')
+
+p1 = Proof('p1', p, {})
+p2 = Proof('p2', q, {})
+p3 = Proof('p3', r, { Literal('p') : p1, Literal('q') : p2 })
+
+p4 = Proof('p4', make_rule('r --> s'), { Literal('r') : p3 })
+
+kb = KnowledgeBase()
+kb.construct_rule('==> p')
+kb.construct_rule('--> r')
+kb.construct_rule('p ==> q')
+kb.construct_rule('r --> q')
+kb.construct_rule('foo --> bar')
+kb.construct_rule('q =(-baz)=> bar')
+kb.construct_rule('q ==> foo')
+kb.construct_rule(' ==> -baz')

@@ -10,15 +10,15 @@ da ==> db
 da, db ==> dc
 da, dc =(df)=> dd
 
-==> at
-==> -at
---> at
+DR1: ==> at
+DR2: ==> -at
+SR1: --> at
 
-Zero: ==> zero
-One: ==> one
-Two: ==> two
+Zero_0: ==> zero
+One_1: ==> one
+Two_2: ==> two
 
-one < two
+One_1 < Two_2
 
 
 # test some more complex reasoning

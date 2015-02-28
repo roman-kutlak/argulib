@@ -149,39 +149,14 @@ class Dialog:
     def add(self, rule_str):
         """ Add a rule to the knowledge base. """
         log().debug('Adding rule "%s"' % str(rule_str))
-        if isinstance(rule_str, str):
-            if '->' in rule_str:
-                result, rule = self.kb.construct_strict_rule(rule_str)
-                if result:
-                    self.kb.close()
-                    self.kb.recalculate()
-                return result
-            elif '=>' in rule_str:
-                result, _ = self.kb.construct_defeasible_rule(rule_str, True)
-                return result
-            elif '<' in rule_str:
-                result, _ = self.kb.construct_ordering_rule(rule_str, True)
-                return result
-            else:
-                raise ParseError('"%s" is not a valid rule' % rule_str)
+        self.kb.construct_rule(rule_str)
+        return True
 
-    def delete(self, rule):
+    def delete(self, rule_str):
         """ Remove a rule from the knowledge base. """
-        log().debug('Deleting rule "%s"' % str(rule))
-        if isinstance(rule, str):
-            if '->' in rule:
-                rule = StrictRule.from_str(rule)
-                rules = self.kb.transpositions(rule)
-                rules.append(rule)
-            elif '=>' in rule:
-                rule = DefeasibleRule.from_str(rule)
-                rules = {rule}
-            else:
-                raise ParseError('"%s" is not a valid rule' % rule)
-        result = False
-        for r in rules:
-            result |= self.kb.del_rule(r)
-        return result
+        log().debug('Deleting rule "%s"' % str(rule_str))
+        self.kb.del_rule(rule_str)
+        return True
 
 
     #############  Commands #############
