@@ -1,6 +1,6 @@
 import unittest
 
-from argumentation.kb import Literal, StrictRule, DefeasibleRule, make_rule
+from argumentation.kb import Literal, StrictRule, DefeasibleRule, mk_rule
 from argumentation.kb import Proof, KnowledgeBase
 from argumentation.kb import ParseError
 
@@ -131,17 +131,17 @@ class TestKb(unittest.TestCase):
 
     def test_add_rule(self):
         kb = KnowledgeBase()
-        r = make_rule('--> r')
+        r = mk_rule('--> r')
         kb.add_rule(r)
-        p = Proof('', r, {})
+        p = Proof('', r, {}, None)
         self.assertEqual({p}, kb.proofs_for(Literal('r')))
-        rs = make_rule('r --> s')
+        rs = mk_rule('r --> s')
         kb.add_rule(rs)
         # added a contraposition
         self.assertEqual(3, len(list(kb.rules)))
         tmp = kb.rules_with_consequent(Literal('r', negated=True))
-        self.assertEqual(tmp, {make_rule('-s --> -r')})
-        kb.construct_rule('s ==> t')
+        self.assertEqual(tmp, {mk_rule('-s --> -r')})
+        kb.add_rule('s ==> t')
         self.assertEqual(4, len(list(kb.rules)))
     
     def test_del_rule(self):
@@ -149,31 +149,31 @@ class TestKb(unittest.TestCase):
         kb = KnowledgeBase()
         r = kb.rules_with_consequent('bar')
         self.assertEqual(set(), r)
-        kb.construct_rule('foo --> bar')
+        kb.add_rule('foo --> bar')
         r = kb.rules_with_consequent('bar')
-        self.assertEqual({make_rule('foo --> bar')}, r)
-        kb.del_rule(make_rule('foo --> bar'))
+        self.assertEqual({mk_rule('foo --> bar')}, r)
+        kb.del_rule(mk_rule('foo --> bar'))
         r = kb.rules_with_consequent('bar')
         self.assertEqual(set(), r)
 
-    def test_ordering(self):
+    def test_add_ordering(self):
         kb = KnowledgeBase()
-        r1 = kb.construct_rule('R1: p ==>  q')
-        r2 = kb.construct_rule('R2: r ==> -q')
+        r1 = kb.add_rule('R1: p ==>  q')
+        r2 = kb.add_rule('R2: r ==> -q')
         res = kb.more_preferred(r1, r2)
         self.assertFalse(res)
         res = kb.more_preferred(r2, r1)
         self.assertFalse(res)
 
-        kb.construct_rule('R1 < R2')
+        kb.add_rule('R1 < R2')
         self.assertFalse(kb.more_preferred(r1, r2))
         self.assertTrue(kb.more_preferred(r2, r1))
 
-        kb.construct_rule('R1 < R2, R3, R4 < R5, R6')
-        r3 = kb.construct_rule('R3: ==> r3')
-        r4 = kb.construct_rule('R4: ==> r4')
-        r5 = kb.construct_rule('R5: ==> r5')
-        r6 = kb.construct_rule('R6: ==> r6')
+        kb.add_rule('R1 < R2, R3, R4 < R5, R6')
+        r3 = kb.add_rule('R3: ==> r3')
+        r4 = kb.add_rule('R4: ==> r4')
+        r5 = kb.add_rule('R5: ==> r5')
+        r6 = kb.add_rule('R6: ==> r6')
         # r6 beats almost anything
         self.assertTrue(kb.more_preferred(r6, r1))
         self.assertTrue(kb.more_preferred(r6, r2))
@@ -195,6 +195,37 @@ class TestKb(unittest.TestCase):
         self.assertFalse(kb.more_preferred(r3, r4))
         self.assertFalse(kb.more_preferred(r3, r5))
         self.assertFalse(kb.more_preferred(r3, r6))
+
+    def test_del_ordering(self):
+        kb = KnowledgeBase()
+        r1 = kb.add_rule('R1: ==> r1')
+        r2 = kb.add_rule('R2: ==> r2')
+        r3 = kb.add_rule('R3: ==> r3')
+        r4 = kb.add_rule('R4: ==> r4')
+        r5 = kb.add_rule('R5: ==> r5')
+        r6 = kb.add_rule('R6: ==> r6')
+        self.assertFalse(kb.more_preferred(r1, r2))
+        self.assertFalse(kb.more_preferred(r2, r1))
+        
+        kb.add_rule('R1 < R2, R3, R4 < R5, R6')
+        self.assertFalse(kb.more_preferred(r1, r2))
+        self.assertTrue(kb.more_preferred(r2, r1))
+        self.assertTrue(kb.more_preferred(r5, r2))
+
+        kb.del_rule('R1 < R2 < R5')
+        self.assertFalse(kb.more_preferred(r1, r2))
+        self.assertFalse(kb.more_preferred(r2, r1))
+        self.assertTrue(kb.more_preferred(r5, r1))
+        self.assertFalse(kb.more_preferred(r5, r2))
+        self.assertTrue(kb.more_preferred(r5, r3))
+        self.assertTrue(kb.more_preferred(r5, r4))
+        self.assertFalse(kb.more_preferred(r5, r5))
+        self.assertFalse(kb.more_preferred(r5, r6))
+        self.assertTrue(kb.more_preferred(r6, r1))
+        kb.del_rule('R1 < R6')
+        self.assertTrue(kb.more_preferred(r6, r1))
+        print(kb)
+
 
 
 ################################################################################

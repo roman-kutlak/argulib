@@ -86,10 +86,10 @@ class Dialog:
             except ParseError as pe:
                 print(pe)
                 return None
-        if not conclusion in self.kb.rules:
+        if not conclusion in self.kb._rules:
             return None
         else:
-            rules = self.kb.rules[conclusion]
+            rules = self.kb._rules[conclusion]
             # return the 'first' rule
             for x in rules: return x
 
@@ -104,10 +104,10 @@ class Dialog:
             except ParseError as pe:
                 print(pe)
                 return None
-        if not conclusion in self.kb.rules:
+        if not conclusion in self.kb._rules:
             return None
         else:
-            rules = self.kb.rules[conclusion]
+            rules = self.kb._rules[conclusion]
             return list(rules)
 
     def find_argument(self, conclusion):
@@ -121,10 +121,10 @@ class Dialog:
             except ParseError as pe:
                 print(pe)
                 return None
-        if not conclusion in self.kb._arguments:
+        if not conclusion in self.aaf._arguments:
             return None
         else:
-            args = self.kb._arguments[conclusion]
+            args = self.aaf._arguments[conclusion]
             # return the 'first' rule
             for x in args: return x
 
@@ -139,16 +139,16 @@ class Dialog:
             except ParseError as pe:
                 print(pe)
                 return None
-        if not conclusion in self.kb._arguments:
+        if not conclusion in self.aaf._arguments:
             return None
         else:
-            args = self.kb._arguments[conclusion]
+            args = self.aaf._arguments[conclusion]
             return list(args)
 
     def add(self, rule_str):
         """ Add a rule to the knowledge base. """
         log().debug('Adding rule "%s"' % str(rule_str))
-        self.kb.construct_rule(rule_str)
+        self.kb.add_rule(rule_str)
         return True
 
     def delete(self, rule_str):
@@ -228,8 +228,7 @@ class Dialog:
 
     def do_assert(self, rule):
         # if user asserts only a conclusion, add the defeasible rule synt. part
-        if (isinstance(rule, str) and
-            ('->' not in rule and '=>' not in rule and '<' not in rule)):
+        if ('>' not in rule and '<' not in rule):
             rule = '==> ' + rule
         try:
             res = self.add(rule)
@@ -243,8 +242,7 @@ class Dialog:
             return str(pe)
 
     def do_retract(self, rule):
-        if (isinstance(rule, str) and
-            '->' not in rule and '=>' not in rule and '<' not in rule):
+        if ('>' not in rule and '<' not in rule):
             rule = '==> ' + rule
         try:
             res = self.delete(rule)
