@@ -4,8 +4,8 @@ import itertools
 import functools
 from collections import defaultdict
 
-import pyparsing
-from pyparsing import Word, Group, Optional, alphanums, alphas, delimitedList
+from pyparsing import alphanums, alphas, delimitedList, ParseException
+from pyparsing import Word, Group, Optional, Suppress, OneOrMore
 
 from .signals import Signal
 from .common import Graph
@@ -89,20 +89,20 @@ class Literal:
 
     @classmethod
     def from_str(cls, data):
-        params = data
-        if isinstance(data, str):
-            data = data.strip()
-            try:
-                parsed = literal.parseString(data, parseAll=True)
-                params = parsed[0]
-            except pyparsing.ParseException as ex:
-                raise ParseError(ex)
+        try:
+            parsed = literal.parseString(str(data).strip(), parseAll=True)
+            return parsed[0]
+        except ParseException as e:
+            raise ParseError('"%s" is not a literal\n\t error: %s'
+                             % (data, str(e)))
+    
+    @classmethod
+    def from_parsed(cls, parsed):
+        params = parsed[0]
         if (len(params) == 1):
             return cls(params[0])
         elif (len(params) == 2):
             return cls(params[1], True)
-        else:
-            raise ParseError('Data mallformed: "%s"' % data)
 
 
 def check_list_of_type(lst, cls, msg=''):
@@ -214,24 +214,26 @@ class StrictRule:
 
     @classmethod
     def from_str(cls, data):
-        if not isinstance(data, str):
-            raise ParseError('"%s" is not a string' % repr(data))
         try:
-            parsed = strict_rule.parseString(data, parseAll=True)
-            if 'name' in parsed:
-                name = parsed['name']
-            else:
-                name = ''
-            antecedent = None
-            if 'antecedent' in parsed:
-                antecedent = list(map(Literal.from_str, parsed['antecedent']))
-            else:
-                antecedent = []
-            consequent = Literal.from_str(parsed['consequent'][0])
-            return cls(antecedent, consequent, name)
+            parsed = strict_rule.parseString(str(data).strip(), parseAll=True)
+            return parsed[0]
         except Exception as e:
             raise ParseError('"%s" is not a strict rule\n\t error: %s'
                              % (data, str(e)))
+
+    @classmethod
+    def from_parsed(cls, parsed):
+        if 'name' in parsed:
+            name = parsed['name']
+        else:
+            name = ''
+        antecedent = None
+        if 'antecedent' in parsed:
+            antecedent = list(parsed['antecedent'])
+        else:
+            antecedent = []
+        consequent = parsed['consequent'][0]
+        return cls(antecedent, consequent, name)
 
 
 class DefeasibleRule:
@@ -341,74 +343,82 @@ class DefeasibleRule:
 
     def is_defeasible(self):
         return True
-    
+
     @classmethod
     def from_str(cls, data):
-        if not isinstance(data, str):
-            raise ParseError('"%s" is not a string' % repr(data))
         try:
-            parsed = defeasible_rule.parseString(data, parseAll=True)
-            if 'name' in parsed:
-                name = parsed['name']
-            else:
-                name = ''
-            antecedent = None
-            if 'antecedent' in parsed:
-                antecedent = list(map(Literal.from_str, parsed['antecedent']))
-            else:
-                antecedent = []
-            consequent = Literal.from_str(parsed['consequent'][0])
-            if 'vulnerabilities' in parsed:
-                vulners = list(map(Literal.from_str, parsed['vulnerabilities']))
-            else:
-                vulners = list()
-            return cls(antecedent, consequent, vulners, name)
+            parsed = defeasible_rule.parseString(str(data).strip(),
+                                                 parseAll=True)
+            return parsed[0]
         except Exception as e:
             raise ParseError('"%s" is not a defeasible rule\n\tError: %s'
                              % (repr(data), str(e)))
+    
+    @classmethod
+    def from_parsed(cls, parsed):
+        if 'name' in parsed:
+            name = parsed['name']
+        else:
+            name = ''
+        antecedent = None
+        if 'antecedent' in parsed:
+            antecedent = list(parsed['antecedent'])
+        else:
+            antecedent = []
+        consequent = parsed['consequent'][0]
+        if 'vulnerabilities' in parsed:
+            vulners = list(parsed['vulnerabilities'])
+        else:
+            vulners = list()
+        return cls(antecedent, consequent, vulners, name)
 
 
 class Ordering:
-    def __init__(self, *data):
+    def __init__(self, *data, ord='<'):
         """Initialise orderings from a list of tuples. """
         self.type = ORDERING_RULE
         self.data = check_list_of_type(list(data), tuple)
+        self.ord = ord
 
     @classmethod
-    def from_str(Cls, data):
-        if not isinstance(data, str):
-            raise ParseError('"%s" is not a string' % repr(data))
+    def from_str(cls, data):
         try:
-            tmp = []
-            ords = orderings.parseString(data)
-            for i in range(len(ords) - 1):
-                tmp.append( (ords[i], ords[i+1]) )
-            return Cls(*tmp)
+            parsed = orderings.parseString(str(data).strip(),
+                                           parseAll=True)
+            return parsed[0]
         except Exception as e:
             raise ParseError('"%s" is not a preference rule\n\t error: %s'
                              % (data, str(e)))
 
+    @classmethod
+    def from_parsed(Cls, parsed, ord):
+        tmp = []
+        for i in range(len(parsed) - 1):
+            tmp.append( (list(parsed[i]), list(parsed[i+1])) )
+        return Cls(*tmp, ord=ord)
+
     def __str__(self):
-        return str(self.data)
+        return ' < '.join(map(str, self.data))
+
+    def __repr__(self):
+        return 'Ordering: ' + str(self)
 
     def __eq__(self, other):
         return (self.data == other.data)
 
 
-def make_rule(rule):
+def mk_rule(rule):
     """ Take a string and create an a Strict or a Defeasible rule. """
     if isinstance(rule, str):
-        if '->' in rule:
-            rule = StrictRule.from_str(rule)
-        elif '=>' in rule:
-            rule = DefeasibleRule.from_str(rule)
-        elif '<' in rule:
-            rule = Ordering.from_str(rule)
-        else:
-            raise ParseError('"%s" is not a valid rule' % rule)
+        return rule_grammar.parseString(rule.strip())[0]
+    elif isinstance(rule, StrictRule):
+        return rule
+    elif isinstance(rule, DefeasibleRule):
+        return rule
+    elif isinstance(rule, Ordering):
         return rule
     else:
-        msg = 'make_rule expects a string but received "%s"'
+        msg = 'mk_rule expects a string but received "%s"'
         raise TypeError(msg % repr(rule))
 
 
@@ -425,7 +435,7 @@ class Proof:
         self._proofs = proofs
         self.strict = all(map(lambda x: x.is_strict(), self.rules))
         self.weakest_link = self
-        self.find_weakest(kb)
+        if kb: self.find_weakest(kb)
 
     def __str__(self):
         s = ' ∧ '.join(map(str, self.subproofs))
@@ -630,37 +640,28 @@ class KnowledgeBase:
     def proofs_for(self, conclusion):
         """Return the set of proofs for `conclusion`. """
         return self._proofs[conclusion]
-
-    def construct_rule(self, line):
-        """ Construct a new rule from the given string and add it to the kb. 
-        
-        either string describing a rule (a parse error thrown if
-        not formatted correctly) or a Rule (strict or defeasible).
-        
-        """
-        rule = make_rule(line)
-        self.add_rule(rule)
-        return rule
     
     def add_rule(self, rule, recalc=True):
-        """ Try to add a new rule in the knowledge base.
+        """ Try to add a new rule (possibly a string) in the knowledge base.
         
         Strict rule might raise KBError if it would
         make the knowledge base inconsistent.
+        Ordering rule might raise KBError if it would
+        make the knowledge base inconsistent.
+        Malformed string can raise ParseError.
         
-        rule --  Stric or Defeasible rule
-        
+        rule --  str or Stric or Defeasible or Ordering rule
+        recalc -- if true, proofs will be recalculated
         """
         get_log().debug('adding rule "%s"' % str(rule))
-        if STRICT_RULE == rule.type:
-            self._add_strict_rule(rule)
-        elif DEFEASIBLE_RULE == rule.type:
-            self._add_defeasible_rule(rule)
-        elif ORDERING_RULE == rule.type:
-            self.add_ordering(rule)
+        if isinstance(rule, str): rule = mk_rule(rule)
+        if STRICT_RULE == rule.type: self._add_strict_rule(rule)
+        elif DEFEASIBLE_RULE == rule.type: self._add_defeasible_rule(rule)
+        elif ORDERING_RULE == rule.type: self.add_ordering(rule)
         else:
             msg = 'Unknown rule type for rule "%s"'
             raise KnowledgeBaseError(msg % str(rule))
+        return rule
     
     def _add_strict_rule(self, rule):
         get_log().debug('  _adding strict rule "%s"' % str(rule))
@@ -702,14 +703,15 @@ class KnowledgeBase:
     def del_rule(self, rule):
         """ Delete the given rule and all proofs that use this rule. """
         # if passed as a string, parse it first
-        if isinstance(rule, str): rule = make_rule(rule.strip())
-        get_log().debug('_deleting rule "%s"' % str(rule))
+        if isinstance(rule, str): rule = mk_rule(rule)
+        get_log().debug('deleting rule "%s"' % str(rule))
         if STRICT_RULE == rule.type: self._del_strict_rule(rule)
         elif DEFEASIBLE_RULE == rule.type: self._del_defeasible_rule(rule)
         elif ORDERING_RULE == rule.type: self.del_ordering(rule)
         else:
             msg = 'Unknown rule type for rule "%s"'.format(str(rule))
             raise KnowledgeBaseError(msg)
+        return rule
 
     def _del_strict_rule(self, rule):
         get_log().debug('  _deleting strict rule "%s"' % str(rule))
@@ -917,16 +919,17 @@ class KnowledgeBase:
         """
         get_log().debug('Adding preferences: %s' % str(ord))
         for a, b in ord.data:
-            self.add_preference_rule(a, b)
+            self.add_preference_rule(a, b, direction=ord.ord)
         self.recalculate()
 
     def del_ordering(self, ord):
         """ Remove the given orderings. """
+        # TODO: how to best report failure? pass up?
         for a, b in ord.data:
-            self.del_preference_rule(a, b)
+            self.del_preference_rule(a, b, direction=ord.ord)
         self.recalculate()
     
-    def add_preference_rule(self, lower, higher):
+    def add_preference_rule(self, lower, higher, direction):
         """ Insert preferences for defeasible rules.
         lower, higher - iterable of rule names; higher is preferred over lower.
         
@@ -935,18 +938,22 @@ class KnowledgeBase:
         # NOTE: the order is specified across defeasible rule names
         # on inserting, check that we are not creating inconsistencies
         #   and raise KBError if we are
-        edges = list(itertools.product(higher, lower))
+        if direction == '<':
+            edges = list(itertools.product(higher, lower))
+        else:
+            edges = list(itertools.product(lower, higher))
         get_log().debug('  preference edges: %s' % str(edges))
         # be exception safe - first check for consistency and then add
         tmp = copy.deepcopy(self._prefs)
         for e in edges:
-            po = tmp.find_path(e[1], e[0]) # possible preference order (path)
+            po = tmp.find_path(e[1], e[0]) # possible pref order (path)
             # if po exists than this edge is inconsistent
             if po is not None:
                 # inconsistency - be nice and include extra info
-                ps = ' > '.join(map(str, po))
-                msg = ('The preference rule "%s < %s" is not consistent with'
-                       'the existing preference order: %s' % (e[0], e[1], ps))
+                ps = (' ' + direction + ' ').join(map(str, po))
+                msg = ('The preference rule "%s %s %s" is not consistent with'
+                       'the existing preference order: %s' %
+                        (e[0], direction, e[1], ps))
                 raise KnowledgeBaseError(msg)
             # if the rule is consistent, tentatively add it
             tmp.add_edge(*e)
@@ -956,13 +963,20 @@ class KnowledgeBase:
             get_log().debug('  Adding preference: %s > %s' % e)
             self._prefs.add_edge(*e)
 
-    def del_preference_rule(self, lower, higher):
+    def del_preference_rule(self, lower, higher, direction):
         """ Delete the pair of names from preferences. """
-        edges = list(itertools.product(higher, lower))
+        if direction == '<':
+            edges = list(itertools.product(higher, lower))
+        else:
+            edges = list(itertools.product(lower, higher))
         get_log().debug('Deleting preference rule {0}'.format(repr(edges)))
-        for e in edges:
-            get_log().debug('Deleting "{0}"'.format(repr(e)))
-            self._prefs.del_edge(*e)
+        try:
+            for e in edges:
+                get_log().debug('Deleting "{0}"'.format(repr(e)))
+                self._prefs.del_edge(*e)
+            return True
+        except KeyError:
+            return False
 
     def more_preferred(self, rule_a, rule_b):
         """ Return True if rule 'a' is more preferred than rule 'b'. """
@@ -1026,7 +1040,7 @@ class KnowledgeBase:
             line = line.partition('#')[0].strip() # remove comments
             if line == '': continue
             try:
-                self.construct_rule(line)
+                self.add_rule(line)
             except Exception as e:
                 msg = 'Exception on line %d: %s'
                 get_log().exception(msg % (line_no, str(e)))
@@ -1045,6 +1059,8 @@ def print_proofs(proofs):
 ############################ parsing related functions #########################
 
 literal = Group(Optional(Word('-')) + Word(alphas, alphanums + '_'))
+literal.setParseAction(Literal.from_parsed)
+
 literals = delimitedList(literal)
 antecedent = literals
 vulnerabilities = literals
@@ -1056,13 +1072,30 @@ strict_rule = Optional(ruleName.setResultsName("name") + ':') + \
     Optional(Group(antecedent).setResultsName("antecedent"))  + \
     "-->" + Group(consequent).setResultsName("consequent")
 
+strict_rule.setParseAction(StrictRule.from_parsed)
+
 defeasible_rule = Optional(ruleName.setResultsName("name") + ':') + \
     Optional(Group(antecedent).setResultsName("antecedent")) + '=' + \
     Optional('(' + \
          Group(vulnerabilities).setResultsName("vulnerabilities") + ')') + \
     '=>' + Group(consequent).setResultsName("consequent")
 
-orderings = delimitedList(Group(ruleNames), "<")
+defeasible_rule.setParseAction(DefeasibleRule.from_parsed)
 
+def mk_l_ordering(origString, loc, tokens):
+    return Ordering.from_parsed(tokens, '<')
+
+def mk_r_ordering(origString, loc, tokens):
+    return Ordering.from_parsed(tokens, '>')
+
+LT, GT = map(Suppress, '<>')
+l_orderings = Group(ruleNames) + OneOrMore(LT + Group(ruleNames))
+l_orderings.setParseAction(mk_l_ordering)
+r_orderings = Group(ruleNames) + OneOrMore(GT + Group(ruleNames))
+r_orderings.setParseAction(mk_r_ordering)
+
+orderings = l_orderings | r_orderings
+
+rule_grammar = strict_rule | defeasible_rule | orderings | literal
 
 ################################################################################
