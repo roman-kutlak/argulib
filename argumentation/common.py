@@ -112,8 +112,8 @@ class Graph:
 
     def del_edge(self, source, dest):
         """ Remove the edge between source and dest, if it exists. """
-        if source in self.nodes:
-            self.nodes[source] = [x for x in self.nodes[source] if x != dest]
+        if source in self._items:
+            self._items[source].remove(dest)
 
     def __str__(self):
         """ Return the summary of the graph. """

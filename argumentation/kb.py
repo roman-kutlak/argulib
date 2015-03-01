@@ -415,7 +415,7 @@ def make_rule(rule):
 class Proof:
     """ A proof leading to a particular consequent. """
 
-    def __init__(self, name, rule, proofs):
+    def __init__(self, name, rule, proofs, kb):
         """ Create an instance of a proof concluding "consequent" given 
         the rule and proofs for the antecedents of the rule.
         
@@ -424,6 +424,8 @@ class Proof:
         self.rule = rule
         self._proofs = proofs
         self.strict = all(map(lambda x: x.is_strict(), self.rules))
+        self.weakest_link = self
+        self.find_weakest(kb)
 
     def __str__(self):
         s = ' ∧ '.join(map(str, self.subproofs))
@@ -537,6 +539,20 @@ class Proof:
         """ Returns True if any of the proofs leads to the given consequent. """
         return any(map(lambda x: x.consequent == consequent, self.rules))
 
+    def find_weakest(self, kb):
+        """ Find the weakest rule. """
+        links = []
+        for p in self.proofs:
+            links.append(p.weakest_link)
+        if links:
+            for l in links:
+                if self.weakest_link.rule.name not in kb._prefs:
+                    self.weakest_link = l
+                elif kb.more_preferred(self.weakest_link, l):
+                    self.weakest_link = l
+        get_log().debug('Weakest link of {0} set to \n\t{1}'
+                        .format(self, self.weakest_link))
+
 
 class KnowledgeBaseError(Exception):
     """ Thrown when construction of knowledge base fails. """
@@ -640,7 +656,7 @@ class KnowledgeBase:
             self._add_strict_rule(rule)
         elif DEFEASIBLE_RULE == rule.type:
             self._add_defeasible_rule(rule)
-        elif isinstance(rule, Ordering):
+        elif ORDERING_RULE == rule.type:
             self.add_ordering(rule)
         else:
             msg = 'Unknown rule type for rule "%s"'
@@ -690,6 +706,7 @@ class KnowledgeBase:
         get_log().debug('_deleting rule "%s"' % str(rule))
         if STRICT_RULE == rule.type: self._del_strict_rule(rule)
         elif DEFEASIBLE_RULE == rule.type: self._del_defeasible_rule(rule)
+        elif ORDERING_RULE == rule.type: self.del_ordering(rule)
         else:
             msg = 'Unknown rule type for rule "%s"'.format(str(rule))
             raise KnowledgeBaseError(msg)
@@ -830,7 +847,7 @@ class KnowledgeBase:
             proofs = dict()
             for sp in combination:
                 proofs[sp.consequent] = sp
-            p = Proof('', rule, proofs)
+            p = Proof('', rule, proofs, self)
             name = self.generate_proof_name(p)
             p.name = name
             get_log().debug('\t\tfound proof "%s"' % str(p))
@@ -901,7 +918,14 @@ class KnowledgeBase:
         get_log().debug('Adding preferences: %s' % str(ord))
         for a, b in ord.data:
             self.add_preference_rule(a, b)
+        self.recalculate()
 
+    def del_ordering(self, ord):
+        """ Remove the given orderings. """
+        for a, b in ord.data:
+            self.del_preference_rule(a, b)
+        self.recalculate()
+    
     def add_preference_rule(self, lower, higher):
         """ Insert preferences for defeasible rules.
         lower, higher - iterable of rule names; higher is preferred over lower.
@@ -931,6 +955,14 @@ class KnowledgeBase:
         for e in edges:
             get_log().debug('  Adding preference: %s > %s' % e)
             self._prefs.add_edge(*e)
+
+    def del_preference_rule(self, lower, higher):
+        """ Delete the pair of names from preferences. """
+        edges = list(itertools.product(higher, lower))
+        get_log().debug('Deleting preference rule {0}'.format(repr(edges)))
+        for e in edges:
+            get_log().debug('Deleting "{0}"'.format(repr(e)))
+            self._prefs.del_edge(*e)
 
     def more_preferred(self, rule_a, rule_b):
         """ Return True if rule 'a' is more preferred than rule 'b'. """

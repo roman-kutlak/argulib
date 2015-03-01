@@ -120,12 +120,6 @@ class ArgumentationFramework:
         self._minus = defaultdict(set) # {argument : {attackers}} - attacked by
         self._construct_graph(kb.proofs)
 
-#    @classmethod
-#    def from_proofs(cls, proofs):
-#        af = cls(None)
-#        af._construct_graph(proofs)
-#        return af
-
     @property
     def arguments(self):
         """ Return the generator listing all arguments in the framework. """
@@ -194,7 +188,8 @@ class ArgumentationFramework:
         # a1 rebuts a2 if one of the subproofs of a2 has an opposite concl.
         for proof in a2.proofs:
             if (-a1.conclusion == proof.conclusion):
-                if not (self.more_preferred(proof, a1)):
+                if not (self.more_preferred(proof.weakest_link,
+                                            a1.proof.weakest_link)):
                     get_log().debug('...rebut accepted')
                     a1.plus.add(a2)
                     a2.minus.add(a1)

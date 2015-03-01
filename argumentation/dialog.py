@@ -145,7 +145,6 @@ class Dialog:
             args = self.kb._arguments[conclusion]
             return list(args)
 
-    # FIXME: throw an exception if a new rule would make KB inconsistent?
     def add(self, rule_str):
         """ Add a rule to the knowledge base. """
         log().debug('Adding rule "%s"' % str(rule_str))
@@ -244,7 +243,8 @@ class Dialog:
             return str(pe)
 
     def do_retract(self, rule):
-        if isinstance(rule, str) and '->' not in rule and '=>' not in rule:
+        if (isinstance(rule, str) and
+            '->' not in rule and '=>' not in rule and '<' not in rule):
             rule = '==> ' + rule
         try:
             res = self.delete(rule)
