@@ -581,7 +581,8 @@ class KnowledgeBase:
         # signals
         self.rules_added = Signal()
         self.rules_deleted = Signal()
-        self.updated = Signal()
+        self.updated = Signal() # passes proofs (set) and flag added
+        self.ordering_changed = Signal()
         # index for creating proofs
         self.proof_idx = 0
         # if True, proofs are not generated -- for batch adding/deleting
@@ -641,6 +642,7 @@ class KnowledgeBase:
         """Return the set of proofs for `conclusion`. """
         return self._proofs[conclusion]
     
+    # TODO: remove the recalc flag? or change to batch?
     def add_rule(self, rule, recalc=True):
         """ Try to add a new rule (possibly a string) in the knowledge base.
         
@@ -683,7 +685,7 @@ class KnowledgeBase:
              self._proofs[p.conclusion].add(p)
         # emit signals
         self.rules_added(all)
-        self.updated(new_proofs)
+        self.updated(new_proofs, added=True)
 
     def _add_defeasible_rule(self, rule):
         get_log().debug('  _adding defeasible rule "%s"' % str(rule))
@@ -698,7 +700,7 @@ class KnowledgeBase:
              self._proofs[p.conclusion].add(p)
         # emit signals
         self.rules_added({rule})
-        self.updated(new_proofs)
+        self.updated(new_proofs, added=True)
 
     def del_rule(self, rule):
         """ Delete the given rule and all proofs that use this rule. """
@@ -734,7 +736,7 @@ class KnowledgeBase:
         self._rules[rule.consequent].remove(rule)
         # emit signals
         self.rules_deleted(closure)
-        self.updated(proofs)
+        self.updated(proofs, added=False)
 
     def _del_defeasible_rule(self, rule):
         get_log().debug('  _deleting defeasible rule "%s"' % str(rule))
@@ -750,7 +752,7 @@ class KnowledgeBase:
         self._rules[rule.consequent].remove(rule)
         # emit signals
         self.rules_deleted({rule})
-        self.updated(proofs)
+        self.updated(proofs, added=False)
 
     def contrapositions(self, rule):
         """ Create a set of contraposition rules.
@@ -865,6 +867,7 @@ class KnowledgeBase:
         # add the proofs
         for p in new_proofs:
              self._proofs[p.conclusion].add(p)
+        self.updated(new_proofs, False)
         return new_proofs
     
     def get_rules(self):
@@ -917,9 +920,11 @@ class KnowledgeBase:
         KnowledgeBaseError when preferences are inconsistent.
         
         """
+        # TODO: how to best report failure? pass up?
         get_log().debug('Adding preferences: %s' % str(ord))
         for a, b in ord.data:
             self.add_preference_rule(a, b, direction=ord.ord)
+        self.ordering_changed()
         self.recalculate()
 
     def del_ordering(self, ord):
@@ -927,6 +932,7 @@ class KnowledgeBase:
         # TODO: how to best report failure? pass up?
         for a, b in ord.data:
             self.del_preference_rule(a, b, direction=ord.ord)
+        self.ordering_changed()
         self.recalculate()
     
     def add_preference_rule(self, lower, higher, direction):

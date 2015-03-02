@@ -49,18 +49,18 @@ class Dialog:
     def __init__(self, kb_path=None):
         self.load_kb(kb_path)
         self.discussion = None
+        self.labelling.updated.connect(self._init_discussion)
 
     def load_kb(self, path):
         self.kb = KnowledgeBase.from_file(path)
         self.aaf = ArgumentationFramework(self.kb)
+        self.labelling = Labelling.grounded(self.aaf)
 
     def _init_discussion(self):
-        self.discussion = GroundedDiscussion2(Labelling.grounded(self.aaf),
+        log().debug('initialising discussion')
+        self.discussion = GroundedDiscussion2(self.labelling,
                             SmartPlayer(PlayerType.PROPONENT),
                             HumanPlayer(PlayerType.OPPONENT))
-
-    def labelling(self):
-        return Labelling.grounded(self.aaf)
 
     def is_accepted_conclusion(self, conclusion):
         """Return true if there is an argument with the conclusion and it is IN.
@@ -233,7 +233,6 @@ class Dialog:
         try:
             res = self.add(rule)
             if res:
-                self.recalculate()
                 return 'asserted %s' % str(rule)
             else:
                 return ('Rule "%s" not added (it probably already exists?)' %
@@ -247,7 +246,6 @@ class Dialog:
         try:
             res = self.delete(rule)
             if res:
-                self.recalculate()
                 return 'deleted %s' % str(rule)
             else:
                 return 'no rule "%s" found' % str(rule)
@@ -258,7 +256,7 @@ class Dialog:
     def recalculate(self):
         """ Recalculate the arguments from the knowledge base. """
         log().info('Recalculating aaf')
-        self.aaf = ArgumentationFramework(self.kb)
+        self.aaf.reconstruct()
         self.discussion = None
 
     def do_print_aaf(self):
