@@ -129,8 +129,8 @@ class ArgumentationFramework:
     def __str__(self):
         tmp = lambda a: ('%s:\n\tattacking: %s\n\tattackers: %s'
                          % (str(a),
-                            str(sorted([x[0].name for x in a.plus])),
-                            str(sorted([x[0].name for x in a.minus]))))
+                            str(sorted([x.name for x in a.plus])),
+                            str(sorted([x.name for x in a.minus]))))
         args = sorted(self.arguments, key=lambda x: x.name)
         return '\n'.join([ tmp(a) for a in args])
     

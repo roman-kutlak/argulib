@@ -1014,8 +1014,8 @@ class KnowledgeBase:
                     if cp.is_strict():
                         # cp is a strict proof with an opposite conclusion
                         # which is not consistent with the proof p
-                        msg = ('The proof %s is inconsistent with an existing '
-                               'proof %s' % (str(p), str(cp)))
+                        msg = ('The proof "%s" is inconsistent with an existing'
+                               ' proof "%s"' % (str(p), str(cp)))
                         raise KnowledgeBaseError(msg)
 
     def generate_proof_name(self, proof):
@@ -1051,7 +1051,8 @@ class KnowledgeBase:
                 msg = 'Exception on line %d: %s'
                 get_log().exception(msg % (line_no, str(e)))
         self.batch = False
-        self.recalculate()
+        proofs = self.recalculate()
+        self.check_consistency(proofs)
 
 
 # little helpers
