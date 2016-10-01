@@ -2,3 +2,4 @@ af.dot
 af.pdf
 __pycache__
 .coverage
+.idea

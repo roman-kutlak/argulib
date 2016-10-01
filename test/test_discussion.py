@@ -1,13 +1,13 @@
 import unittest
 
-from argumentation.common import Move, PlayerType
-from argumentation.common import IllegalMove, NoMoreMoves, NotYourMove
-from argumentation.discussions import GroundedDiscussion, GroundedDiscussion2
-from argumentation.discussions import Dialog
-from argumentation.kb import KnowledgeBase, Argument
-from argumentation.kb import  Rule, StrictRule, DefeasibleRule, Literal
-from argumentation.aal import ArgumentationFramework, Labelling
-from argumentation.players import Player, SmartPlayer, ScepticalPlayer
+from argulib.common import Move, PlayerType
+from argulib.common import IllegalMove, NoMoreMoves, NotYourMove
+from argulib.discussions import GroundedDiscussion, GroundedDiscussion2
+from argulib.discussions import Dialog
+from argulib.kb import KnowledgeBase, Argument
+from argulib.kb import  Rule, StrictRule, DefeasibleRule, Literal
+from argulib.aal import ArgumentationFramework, Labelling
+from argulib.players import Player, SmartPlayer, ScepticalPlayer
 
 
 class GroundedDiscussionTest(unittest.TestCase):
@@ -121,7 +121,7 @@ class GroundedDiscussionTest(unittest.TestCase):
 
 
 def discuss(arg=None):
-    kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
+    kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
     d = GroundedDiscussion(l,
@@ -149,7 +149,7 @@ def discuss(arg=None):
     return d
 
 def discuss2(arg=None):
-    kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
+    kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
     d = GroundedDiscussion(l,
@@ -177,7 +177,7 @@ def discuss2(arg=None):
     return d
 
 def discuss3(arg=None):
-    kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
+    kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
     d = GroundedDiscussion2(l,
@@ -207,7 +207,7 @@ def discuss3(arg=None):
 #print(discuss3('A0'))
 
 
-test_kb_path = './argumentation/test/data/test.kb.txt'
+test_kb_path = './argulib/test/data/test.kb.txt'
 
 class DialogTest(unittest.TestCase):
     """ A test harness for the Dialog class. """

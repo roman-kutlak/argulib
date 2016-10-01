@@ -1,11 +1,11 @@
 import unittest
 
-from argumentation.kb import Literal, StrictRule, DefeasibleRule, mk_rule
-from argumentation.kb import Proof, KnowledgeBase
-from argumentation.kb import ParseError
+from argulib.kb import Literal, StrictRule, DefeasibleRule, mk_rule
+from argulib.kb import Proof, KnowledgeBase
+from argulib.kb import ParseError
 
 
-test_kb_path = './argumentation/test/data/tandem.kb.txt'
+test_kb_path = './argulib/test/data/tandem.kb.txt'
 
 #o_str = "r1, r2, r3 < r4, r5 < r6"
 

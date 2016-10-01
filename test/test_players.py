@@ -1,16 +1,16 @@
 import unittest
 
-from argumentation.discussions import GroundedDiscussion2
-from argumentation.players import HumanPlayer, ScepticalPlayer
-from argumentation.kb import KnowledgeBase
-from argumentation.aal import ArgumentationFramework, Labelling
-from argumentation.common import *
+from argulib.discussions import GroundedDiscussion2
+from argulib.players import HumanPlayer, ScepticalPlayer
+from argulib.kb import KnowledgeBase
+from argulib.aal import ArgumentationFramework, Labelling
+from argulib.common import *
 
 
 class HumanPlayerTest(unittest.TestCase):
 
     def test_parsing(self):
-        kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
+        kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
         af = ArgumentationFramework(kb)
         l = Labelling.grounded(af)
         human = HumanPlayer(PlayerType.OPONENT)
@@ -22,7 +22,7 @@ class HumanPlayerTest(unittest.TestCase):
 
 
 
-kb = KnowledgeBase.from_file('./argumentation/test/data/UAV_1.kb.txt')
+kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
 af = ArgumentationFramework(kb)
 l = Labelling.grounded(af)
 human = HumanPlayer(PlayerType.OPONENT)

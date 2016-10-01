@@ -9,7 +9,6 @@ Updated: December 12, 2011
 License: MIT
 
 """
-from __future__ import print_function
 import inspect
 from weakref import WeakSet, WeakKeyDictionary
 

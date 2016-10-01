@@ -13,13 +13,13 @@ This module implements interface for persuasion discussions.
 import logging
 from cmd import Cmd
 
-from argumentation.common import Move, IllegalMove, ArgumentationException
-from argumentation.aal import ArgumentationFramework, Labelling
-from argumentation.kb import KnowledgeBase, Literal, ParseError
-from argumentation.kb import StrictRule, DefeasibleRule
-from argumentation.players import SmartPlayer, ScepticalPlayer
-from argumentation.players import HumanPlayer, PlayerType
-from argumentation.discussions import GroundedDiscussion2
+from argulib.common import Move, IllegalMove, ArgumentationException
+from argulib.aal import ArgumentationFramework, Labelling
+from argulib.kb import KnowledgeBase, Literal, ParseError
+from argulib.kb import StrictRule, DefeasibleRule
+from argulib.players import SmartPlayer, ScepticalPlayer
+from argulib.players import HumanPlayer, PlayerType
+from argulib.discussions import GroundedDiscussion2
 
 
 def log():
@@ -260,7 +260,7 @@ class Dialog:
         self.discussion = None
 
     def do_print_aaf(self):
-        """ Return the string representing the current argumentation framework.
+        """ Return the string representing the current argulib framework.
         """
         return str(self.aaf)
 
@@ -278,7 +278,7 @@ class Dialog:
             why not p - what reasoning lead to conclusion -p
             assert r  - add a rule to the knowledge base
             retract r - remove a rule from the knowledge base
-            print af  - print argumentation framework
+            print af  - print argulib framework
             pring kb  - print knowledge base
             concede   - concede to the last open issue
 
@@ -367,7 +367,7 @@ class Commands(Cmd):
             print('Exception: %s' % e)
 
     def do_print_af(self, l):
-        """Displays the current argumentation framework."""
+        """Displays the current argulib framework."""
         print('Current framework: ')
         print(self.af)
 
