@@ -16,19 +16,19 @@ from cmd import Cmd
 from argulib.common import Move, IllegalMove, ArgumentationException
 from argulib.aal import ArgumentationFramework, Labelling
 from argulib.kb import KnowledgeBase, Literal, ParseError
-from argulib.kb import StrictRule, DefeasibleRule
-from argulib.players import SmartPlayer, ScepticalPlayer
+from argulib.players import SmartPlayer
 from argulib.players import HumanPlayer, PlayerType
 from argulib.discussions import GroundedDiscussion2
 
 
-def log():
-    return logging.getLogger('arg')
+logger = logging.getLogger('arg.dialog')
 
 Debug = False
 
+
 class NoSuchArgumentError(Exception):
     pass
+
 
 class LabellingParseError(Exception):
     pass
@@ -57,7 +57,7 @@ class Dialog:
         self.labelling = Labelling.grounded(self.aaf)
 
     def _init_discussion(self):
-        log().debug('initialising discussion')
+        logger.debug('initialising discussion')
         self.discussion = GroundedDiscussion2(self.labelling,
                             SmartPlayer(PlayerType.PROPONENT),
                             HumanPlayer(PlayerType.OPPONENT))
@@ -67,7 +67,7 @@ class Dialog:
         """
         if self.discussion is None: self._init_discussion()
         args = self.find_arguments(conclusion)
-        log().info(str(args))
+        logger.info(str(args))
         if args is None: return False
         lab = self.discussion.labelling.label_for
         for arg in args:
@@ -147,13 +147,13 @@ class Dialog:
 
     def add(self, rule_str):
         """ Add a rule to the knowledge base. """
-        log().debug('Adding rule "%s"' % str(rule_str))
+        logger.debug('Adding rule "%s"' % str(rule_str))
         self.kb.add_rule(rule_str)
         return True
 
     def delete(self, rule_str):
         """ Remove a rule from the knowledge base. """
-        log().debug('Deleting rule "%s"' % str(rule_str))
+        logger.debug('Deleting rule "%s"' % str(rule_str))
         self.kb.del_rule(rule_str)
         return True
 
@@ -255,7 +255,7 @@ class Dialog:
 
     def recalculate(self):
         """ Recalculate the arguments from the knowledge base. """
-        log().info('Recalculating aaf')
+        logger.info('Recalculating aaf')
         self.aaf.reconstruct()
         self.discussion = None
 
@@ -283,7 +283,7 @@ class Dialog:
             concede   - concede to the last open issue
 
         """
-        log().info('parsing command: "%s"' % command)
+        logger.info('parsing command: "%s"' % command)
         tmp = command.strip().split(' ')
 #        print('User command: %s' % str(tmp))
         if len(tmp) < 2:

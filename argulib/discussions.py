@@ -1,5 +1,3 @@
-#from enum import Enum
-
 import logging
 import random
 
@@ -7,8 +5,8 @@ from .common import Move, role_str, move_str, PlayerType
 from .common import IllegalArgument, IllegalMove, NotYourMove
 
 
-def log():
-    return logging.getLogger('arg')
+logger = logging.getLogger('arg.discussion')
+
 
 class GroundedDiscussion:
     Debug = False
@@ -22,7 +20,7 @@ class GroundedDiscussion:
         self.open_issues = list()
 
     def __str__(self):
-        op_str = str('Oponent: %s' % self.opponent.commitment)
+        op_str = str('Opponent: %s' % self.opponent.commitment)
         pr_str = str('Proponent: %s' % self.proponent.commitment)
         oi_str = str('Open Issues: %s' % [str(i) for i in self.open_issues])
         m_str  = ('Moves:\n\t' + '\n\t'.join(['%s: %s %s' %

@@ -5,12 +5,7 @@ from argulib.kb import Proof, KnowledgeBase
 from argulib.kb import ParseError
 
 
-test_kb_path = './argulib/test/data/tandem.kb.txt'
-
-#o_str = "r1, r2, r3 < r4, r5 < r6"
-
-
-######################### Test parsing functions ###############################
+test_kb_path = './test/data/tandem.kb.txt'
 
 
 class TestLiteral(unittest.TestCase):
@@ -59,17 +54,16 @@ class TestLiteral(unittest.TestCase):
         self.assertNotEqual(l1, Literal.from_str(str(l2)))
         self.assertNotEqual(l2, Literal.from_str(str(l1)))
 
-        self.assertEqual('Literal: a', repr(l1))
-        self.assertEqual('Literal: -a', repr(l2))
+        self.assertEqual('<Literal: a>', repr(l1))
+        self.assertEqual('<Literal: -a>', repr(l2))
 
     def test_order(self):
         l1 = Literal('a')
         l2 = Literal.from_str('a')
         l3 = Literal.from_str('b')
         l4 = Literal('a', negated=True)
-        lits = [l1, l2, l3, l4]
-        lits.sort()
-        self.assertEqual([l1, l2, l4, l3], lits)
+        actual = sorted([l1, l2, l3, l4])
+        self.assertEqual([l1, l2, l4, l3], actual)
 
 
 class TestStrictRule(unittest.TestCase):
@@ -224,13 +218,8 @@ class TestKb(unittest.TestCase):
         self.assertTrue(kb.more_preferred(r6, r1))
         kb.del_rule('R1 < R6')
         self.assertTrue(kb.more_preferred(r6, r1))
-        print(kb)
 
 
-
-################################################################################
-
-# if the module is loaded on its own, run the test
 if __name__ == '__main__':
     import logging.config
     logging.basicConfig(level=logging.DEBUG)

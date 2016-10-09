@@ -1,3 +1,9 @@
+"""
+
+Structures and functions for reading a knowledge base of rules for constructing argument networks.
+
+"""
+
 import logging
 import copy
 import itertools
@@ -12,11 +18,6 @@ from .common import Graph
 
 logger = logging.getLogger('argulib.kb')
 
-"""
-Structures and functions for reading a knowledge base of rules for constructing argument networks.
-
-"""
-
 
 class ParseError(Exception):
     """ Thrown when parsing fails. """
@@ -28,7 +29,7 @@ class RuleError(Exception):
 
 
 class Literal:
-    """ The class represents a literal (possibly negated).
+    """ The class represents a (possibly negated) literal.
 
     The main purpose of the class is to enforce naming conventions.
     Literals follow C naming conventions - start with a letter
@@ -50,9 +51,6 @@ class Literal:
         self.negated = negated
 
     def __eq__(self, other):
-        """ Compare with a literal or a string. """
-        if isinstance(other, str):
-            other = Literal.from_str(other)
         return (isinstance(other, Literal) and
                 self.name == other.name and
                 self.negated == other.negated)
@@ -75,7 +73,7 @@ class Literal:
     @classmethod
     def from_str(cls, data):
         try:
-            parsed = Parser.literal.parseString(str(data).strip(), parseAll=True)
+            parsed = _literal.parseString(str(data).strip(), parseAll=True)
             return parsed[0]
         except ParseException as e:
             raise ParseError('"%s" is not a literal; %s' % (data, str(e))) from e
@@ -87,29 +85,6 @@ class Literal:
             return cls(params[0])
         elif len(params) == 2:
             return cls(params[1], True)
-
-
-def check_list_of_type(lst, cls, msg=''):
-    """ Check that the given list contains only instances of cls.
-    Raise TypeError if an element is not of the given type.
-    If the list is None, an empty list is returned.
-
-    :param lst: list of items or None
-    :param cls: the class of which the elements should be instances
-    :param msg: error message used in exception
-    :returns: the passed list
-    """
-    if lst is None:
-        return []
-    for o in lst:
-        if not isinstance(o, cls):
-            if not msg:
-                msg = ('Elements of the list must be instances of {cls}'
-                       .format(cls=str(cls)))
-            raise TypeError(msg)
-    if not isinstance(lst, list):
-        return list(lst)
-    return lst
 
 
 # types of rules
@@ -124,6 +99,7 @@ class StrictRule:
 
     _hash = None
 
+    type = STRICT_RULE
     is_strict = True
     is_defeasible = False
 
@@ -134,7 +110,6 @@ class StrictRule:
         name -- an optional name (default = '')
             
         """
-        self.type = STRICT_RULE
         self.name = name
         # do some error checking to be nice
         self.antecedent = check_list_of_type(antecedent, Literal,
@@ -196,7 +171,7 @@ class StrictRule:
     @classmethod
     def from_str(cls, data):
         try:
-            parsed = Parser.strict_rule.parseString(str(data).strip(), parseAll=True)
+            parsed = _strict_rule.parseString(str(data).strip(), parseAll=True)
             return parsed[0]
         except Exception as e:
             raise ParseError('"%s" is not a strict rule\n\t error: %s'
@@ -230,6 +205,7 @@ class DefeasibleRule:
     """
     _hash = None
 
+    type = DEFEASIBLE_RULE
     is_strict = False
     is_defeasible = True
 
@@ -241,7 +217,6 @@ class DefeasibleRule:
         :param name: an optional name (default = '')
 
         """
-        self.type = DEFEASIBLE_RULE
         self.name = name
         # do some error checking to be nice
         self.antecedent = check_list_of_type(antecedent, Literal,
@@ -249,7 +224,7 @@ class DefeasibleRule:
         self.antecedent.sort()  # it is essential that the list is sorted!
 
         if not isinstance(consequent, Literal):
-            raise RuleError('Consequent must be a Literal but was {t}'
+            raise RuleError('Consequent must be a Literal but was {}'
                             .format(type(consequent)))
         self.consequent = consequent
 
@@ -323,7 +298,7 @@ class DefeasibleRule:
     @classmethod
     def from_str(cls, data):
         try:
-            parsed = Parser.defeasible_rule.parseString(str(data).strip(), parseAll=True)
+            parsed = _defeasible_rule.parseString(str(data).strip(), parseAll=True)
             return parsed[0]
         except Exception as e:
             raise ParseError('"%s" is not a defeasible rule\n\tError: %s'
@@ -348,16 +323,18 @@ class DefeasibleRule:
 
 
 class Ordering:
+
+    type = ORDERING_RULE
+
     def __init__(self, *data, direction='<'):
         """Initialise orderings from a list of tuples. """
-        self.type = ORDERING_RULE
         self.data = check_list_of_type(list(data), tuple)
-        self.ord = direction
+        self.direction = direction
 
     @classmethod
     def from_str(cls, data):
         try:
-            parsed = Parser.orderings.parseString(str(data).strip(), parseAll=True)
+            parsed = _orderings.parseString(str(data).strip(), parseAll=True)
             return parsed[0]
         except Exception as e:
             raise ParseError('"%s" is not a preference rule\n\t error: %s' % (data, str(e)))
@@ -367,13 +344,13 @@ class Ordering:
         tmp = []
         for i in range(len(parsed) - 1):
             tmp.append((list(parsed[i]), list(parsed[i + 1])))
-        return cls(*tmp, ord=ord)
+        return cls(*tmp, direction=ord)
 
     def __str__(self):
-        return ' < '.join(map(str, self.data))
+        return (' %s ' % self.direction).join(map(str, self.data))
 
     def __repr__(self):
-        return 'Ordering: ' + str(self)
+        return '<Ordering: %s>' % str(self)
 
     def __eq__(self, other):
         return self.data == other.data
@@ -395,7 +372,7 @@ class Proof:
         self.is_defeasible = not self.is_strict
         self.weakest_link = self
         if kb:
-            self.find_weakest(kb)
+            self.update_weakest_link(kb)
 
     def __str__(self):
         s = ' ∧ '.join(map(str, self.subproofs))
@@ -409,7 +386,7 @@ class Proof:
 
     def __eq__(self, other):
         """ Two proofs are equal if they have the same top rule and the same sub-proofs. """
-        return self.rule == other.rule and self.proofs == other.proofs
+        return self.rule == other.rule and self._proofs == other._proofs
 
     def __hash__(self):
         if not self._hash:
@@ -495,19 +472,18 @@ class Proof:
         """ Returns True if any of the proofs leads to the given consequent. """
         return any(map(lambda x: x.consequent == consequent, self.rules))
 
-    def find_weakest(self, kb):
-        """ Find the weakest rule. """
-        links = []
-        for p in self.proofs:
-            links.append(p.weakest_link)
-        if links:
-            for l in links:
-                if self.weakest_link.rule.name not in kb._prefs:
-                    self.weakest_link = l
-                elif kb.more_preferred(self.weakest_link, l):
-                    self.weakest_link = l
+    def update_weakest_link(self, kb):
+        """ Find the weakest rule based on the preference of the knowledge base. """
+        # FIXME: this actually just finds the least preferred rule wrt to itself
+        #   the weakest link should really be calculated between two proofs
+        #   because preferences might not be defined over every pari of rules
+        self.weakest_link = self
+        for link in [p.weakest_link for p in self.proofs]:
+            if kb.less_preferred(link, self.weakest_link):
+                self.weakest_link = link
         logger.debug('Weakest link of {0} set to \n\t{1}'
                      .format(self, self.weakest_link))
+        return self.weakest_link
 
 
 class KnowledgeBaseError(Exception):
@@ -550,21 +526,13 @@ class KnowledgeBase:
         return str(self) == str(other)
 
     def __str__(self):
-        strict = list(self.get_strict_rules())
-        defeasible = list(self.get_defeasible_rules())
-        proofs = list(self.proofs)
-        # sort the rules for easy reading
-        defeasible.sort()
-        strict.sort()
-        proofs.sort()
-
         s = 'Name: "%s"\n' % self.name
         s += ('Strict Rules:\n\t%s\n' %
-              '\n\t'.join(map(str, strict)))
+              '\n\t'.join(map(str, sorted(self.get_strict_rules()))))
         s += ('Defeasible Rules:\n\t%s\n' %
-              '\n\t'.join(map(str, defeasible)))
+              '\n\t'.join(map(str, sorted(self.get_defeasible_rules()))))
         s += ('Proofs:\n\t%s\n' %
-              '\n\t'.join(map(str, proofs)))
+              '\n\t'.join(map(str, sorted(self.proofs))))
         s += ('Preferences:\n\t%s' %
               '\n\t'.join(map(lambda x: '%s > %s' % x, self._prefs.edges)))
         return s
@@ -881,7 +849,7 @@ class KnowledgeBase:
         # TODO: how to best report failure? pass up?
         logger.debug('Adding preferences: %s' % str(ordering))
         for a, b in ordering.data:
-            self.add_preference_rule(a, b, direction=ordering.ord)
+            self.add_preference_rule(a, b, direction=ordering.direction)
         self.ordering_changed()
         self.recalculate()
 
@@ -948,10 +916,12 @@ class KnowledgeBase:
         path = self._prefs.find_path(rule_a.name, rule_b.name)
         return path is not None and path != [rule_a.name]
 
+    def less_preferred(self, rule_a, rule_b):
+        """ Return True if rule 'a' is less preferred than rule 'b'. """
+        return self.more_preferred(rule_b, rule_a)
+
     def preference_order(self, rule_a, rule_b):
-        """ Return the order of preferences between rule_a and rule_b or None.
-        
-        """
+        """ Return the order of preferences between rule_a and rule_b or None. """
         return self._prefs.find_path(rule_a.name, rule_b.name)
 
     def has_preference_for(self, rule):
@@ -1015,7 +985,29 @@ class KnowledgeBase:
         self.check_consistency(proofs)
 
 
-# little helpers
+def check_list_of_type(lst, cls, msg=''):
+    """ Check that the given list contains only instances of cls.
+    Raise TypeError if an element is not of the given type.
+    If the list is None, an empty list is returned.
+
+    :param lst: list of items or None
+    :param cls: the class of which the elements should be instances
+    :param msg: error message used in exception
+    :returns: the passed list
+    """
+    if lst is None:
+        return []
+    for o in lst:
+        if not isinstance(o, cls):
+            if not msg:
+                msg = ('Elements of the list must be instances of {cls}'
+                       .format(cls=str(cls)))
+            raise TypeError(msg)
+    if not isinstance(lst, list):
+        return list(lst)
+    return lst
+
+
 def print_proofs(proofs):
     for c, ps in proofs.items():
         print(str(c) + ':')
@@ -1026,7 +1018,7 @@ def print_proofs(proofs):
 def mk_rule(rule):
     """ Take a string and create an a Strict or a Defeasible rule. """
     if isinstance(rule, str):
-        return Parser.rule_grammar.parseString(rule.strip())[0]
+        return _rule_grammar.parseString(rule.strip())[0]
     elif isinstance(rule, StrictRule):
         return rule
     elif isinstance(rule, DefeasibleRule):
@@ -1040,55 +1032,46 @@ def mk_rule(rule):
 
 # ########################## parsing related functions ######################## #
 
-class Parser(object):
-    """Simple parser for Literal, StrictRule, DefeasibleRule and ordering of defeasible rules."""
-    literal = None
-    orderings = None
-    strict_rule = None
-    defeasible_rule = None
-    rule_grammar = None
+_literal = Group(Optional(Word('-')) + Word(alphas, alphanums + '_'))
+_literal.setParseAction(Literal.from_parsed)
 
-    def __new__(cls, *args, **kwargs):
-        super(cls).__new__(*args, **kwargs)
-        cls.literal = Group(Optional(Word('-')) + Word(alphas, alphanums + '_'))
-        cls.literal.setParseAction(Literal.from_parsed)
+_literals = delimitedList(_literal)
+_antecedent = _literals
+_vulnerabilities = _literals
+_consequent = _literal
+_rule_name = Word(alphas + '_', alphanums + '_')
+_rule_names = delimitedList(_rule_name)
 
-        literals = delimitedList(cls.literal)
-        antecedent = literals
-        vulnerabilities = literals
-        consequent = cls.literal
-        rule_name = Word(alphas + '_', alphanums + '_')
-        rule_names = delimitedList(rule_name)
+_strict_rule = (Optional(_rule_name.setResultsName("name") + ':') +
+                Optional(Group(_antecedent).setResultsName("antecedent")) +
+                "-->" + Group(_consequent).setResultsName("consequent"))
 
-        cls.strict_rule = (Optional(rule_name.setResultsName("name") + ':') +
-                           Optional(Group(antecedent).setResultsName("antecedent")) +
-                           "-->" + Group(consequent).setResultsName("consequent"))
+_strict_rule.setParseAction(StrictRule.from_parsed)
 
-        cls.strict_rule.setParseAction(StrictRule.from_parsed)
+_defeasible_rule = (Optional(_rule_name.setResultsName("name") + ':') +
+                    Optional(Group(_antecedent).setResultsName("antecedent")) + '=' +
+                    Optional('(' + Group(_vulnerabilities).setResultsName("vulnerabilities") + ')') +
+                    '=>' + Group(_consequent).setResultsName("consequent"))
 
-        cls.defeasible_rule = (Optional(rule_name.setResultsName("name") + ':') +
-                               Optional(Group(antecedent).setResultsName("antecedent")) + '=' +
-                               Optional('(' + Group(vulnerabilities).setResultsName("vulnerabilities") + ')') +
-                               '=>' + Group(consequent).setResultsName("consequent"))
+_defeasible_rule.setParseAction(DefeasibleRule.from_parsed)
 
-        cls.defeasible_rule.setParseAction(DefeasibleRule.from_parsed)
 
-        lt, gt = map(Suppress, '<>')
-        l_orderings = Group(rule_names) + OneOrMore(lt + Group(rule_names))
-        l_orderings.setParseAction(Parser.mk_l_ordering)
-        r_orderings = Group(rule_names) + OneOrMore(gt + Group(rule_names))
-        r_orderings.setParseAction(Parser.mk_r_ordering)
+def _mk_l_ordering(_, __, tokens):
+    return Ordering.from_parsed(tokens, '<')
 
-        cls.orderings = l_orderings | r_orderings
 
-        cls.rule_grammar = cls.strict_rule | cls.defeasible_rule | cls.orderings | cls.literal
+def _mk_r_ordering(_, __, tokens):
+    return Ordering.from_parsed(tokens, '>')
 
-    @staticmethod
-    def mk_l_ordering(_, __, tokens):
-        return Ordering.from_parsed(tokens, '<')
 
-    @staticmethod
-    def mk_r_ordering(_, __, tokens):
-        return Ordering.from_parsed(tokens, '>')
+_lt, _gt = map(Suppress, '<>')
+_l_orderings = Group(_rule_names) + OneOrMore(_lt + Group(_rule_names))
+_l_orderings.setParseAction(_mk_l_ordering)
+_r_orderings = Group(_rule_names) + OneOrMore(_gt + Group(_rule_names))
+_r_orderings.setParseAction(_mk_r_ordering)
+
+_orderings = _l_orderings | _r_orderings
+
+_rule_grammar = _strict_rule | _defeasible_rule | _orderings | _literal
 
 # ############################################################################## #

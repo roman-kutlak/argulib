@@ -10,22 +10,22 @@ from argulib.common import *
 class HumanPlayerTest(unittest.TestCase):
 
     def test_parsing(self):
-        kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
+        kb = KnowledgeBase.from_file('./test/data/UAV.kb.txt')
         af = ArgumentationFramework(kb)
         l = Labelling.grounded(af)
-        human = HumanPlayer(PlayerType.OPONENT)
+        human = HumanPlayer(PlayerType.OPPONENT)
         d = GroundedDiscussion2(l,
                            ScepticalPlayer(PlayerType.PROPONENT),
                            human)
-        move = human.parse_command('why in flyToLandingSiteB')
-        self.assertNotNone(move)
+        move = human.parse_command('why in flyToLandingSiteB', d)
+        self.assertIsNotNone(move)
 
 
 
-kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
+kb = KnowledgeBase.from_file('./test/data/UAV.kb.txt')
 af = ArgumentationFramework(kb)
 l = Labelling.grounded(af)
-human = HumanPlayer(PlayerType.OPONENT)
+human = HumanPlayer(PlayerType.OPPONENT)
 d = GroundedDiscussion2(l,
            ScepticalPlayer(PlayerType.PROPONENT), human)
            

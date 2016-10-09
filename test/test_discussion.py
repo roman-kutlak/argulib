@@ -3,9 +3,9 @@ import unittest
 from argulib.common import Move, PlayerType
 from argulib.common import IllegalMove, NoMoreMoves, NotYourMove
 from argulib.discussions import GroundedDiscussion, GroundedDiscussion2
-from argulib.discussions import Dialog
-from argulib.kb import KnowledgeBase, Argument
-from argulib.kb import  Rule, StrictRule, DefeasibleRule, Literal
+from argulib.dialog import Dialog
+from argulib.aal import Argument
+from argulib.kb import KnowledgeBase, StrictRule, DefeasibleRule, Literal
 from argulib.aal import ArgumentationFramework, Labelling
 from argulib.players import Player, SmartPlayer, ScepticalPlayer
 
@@ -15,23 +15,19 @@ class GroundedDiscussionTest(unittest.TestCase):
 
     def setUp(self):
         """ Testing the class requires an abstract AF and the labelling. """
-        a = Argument('A', StrictRule.from_str('--> a'), dict())
-        b = Argument('B', DefeasibleRule.from_str('=(-a)=> b'), dict())
-        c = Argument('C', DefeasibleRule.from_str('==> -b'), dict())
-        d = Argument('D', DefeasibleRule.from_str('=(-a)=> b'), dict())
-        e = Argument('E', DefeasibleRule.from_str('b ==> d'), dict())
-        args = dict()
-        args['a'] = a
-        args['b'] = b
-        args['c'] = c
-        args['d'] = d
-        self.af = ArgumentationFramework.from_arguments(args)
+        kb = KnowledgeBase()
+        kb.add_rule('--> a')
+        kb.add_rule('=(-a)=> b')
+        kb.add_rule('==> -b')
+        kb.add_rule('=(-a)=> b')
+        kb.add_rule('b ==> d')
+        self.af = ArgumentationFramework(kb)
         self.l = Labelling.grounded(self.af)
         # players
         self.p = Player(PlayerType.PROPONENT)
         self.o = Player(PlayerType.OPPONENT)
 
-        self.la = self.l.labelling_for(a)
+        self.la = self.l.labelling_for('a')
         # moves
         self.p_claim_a = (self.p, Move.CLAIM, self.la)
         self.o_claim_a = (self.o, Move.CLAIM, self.la)
@@ -61,7 +57,7 @@ class GroundedDiscussionTest(unittest.TestCase):
         """ Test the rules for 'why' speech act. """
         d = GroundedDiscussion(self.l, self.p, self.o)
 
-        # test that only the oponent can use 'why'
+        # test that only the opponent can use 'why'
         self.assertRaises(NotYourMove, d.move, *self.p_why_a)
         # test that 'why' addresses the last open issue
         self.assertRaises(IllegalMove, d.move, self.o, Move.WHY,
@@ -100,12 +96,12 @@ class GroundedDiscussionTest(unittest.TestCase):
         d.move(*self.o_why_a)
         d.move(self.p, Move.BECAUSE, Labelling(None, set(), set(), set()))
 
-        # test that only the oponent can use 'why'
+        # test that only the opponent can use 'why'
         self.assertRaises(NotYourMove, d.move, *self.p_concede_a)
 
         # test that 'why' can't be played as it already is an open issue
         # self.assertRaises(IllegalMove, d.move, *self.o_why_a)
-        # actually, the above does not work because I allow the oponent
+        # actually, the above does not work because I allow the opponent
         # to open an issue to which the proponent commited (to allow
         # 'because' to show only one answer at a time
 
@@ -121,7 +117,7 @@ class GroundedDiscussionTest(unittest.TestCase):
 
 
 def discuss(arg=None):
-    kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
+    kb = KnowledgeBase.from_file('./test/data/UAV.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
     d = GroundedDiscussion(l,
@@ -149,7 +145,7 @@ def discuss(arg=None):
     return d
 
 def discuss2(arg=None):
-    kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
+    kb = KnowledgeBase.from_file('./test/data/UAV.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
     d = GroundedDiscussion(l,
@@ -177,7 +173,7 @@ def discuss2(arg=None):
     return d
 
 def discuss3(arg=None):
-    kb = KnowledgeBase.from_file('./argulib/test/data/UAV_1.kb.txt')
+    kb = KnowledgeBase.from_file('./test/data/UAV.kb.txt')
     af = ArgumentationFramework(kb)
     l = Labelling.grounded(af)
     d = GroundedDiscussion2(l,
@@ -207,7 +203,7 @@ def discuss3(arg=None):
 #print(discuss3('A0'))
 
 
-test_kb_path = './argulib/test/data/test.kb.txt'
+test_kb_path = './test/data/test.kb.txt'
 
 class DialogTest(unittest.TestCase):
     """ A test harness for the Dialog class. """
@@ -327,11 +323,11 @@ class DialogTest(unittest.TestCase):
     def test_do_retract(self):
         """ Test removing rules. """
         d = Dialog()
-        res = d.do_retract(Rule.from_str('foo --> bar'))
+        res = d.do_retract('foo --> bar')
         msg = 'no rule "foo --> bar" found'
         self.assertEqual(msg, res)
         d.do_assert('foo --> bar')
-        res = d.do_retract(Rule.from_str('foo --> bar'))
+        res = d.do_retract('foo --> bar')
         msg = 'rule "foo --> bar" deleted'
         self.assertEqual(msg, res)
 

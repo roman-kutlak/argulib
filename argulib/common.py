@@ -56,7 +56,7 @@ def oi_to_args(issues):
     return res
 
 
-############################ Graph Data Structure ##############################
+# ########################### Graph Data Structure ############################# #
 
 
 class Graph:
@@ -142,12 +142,12 @@ class Graph:
         result = list()
         for n, t in self._items.items():
             for destination in t:
-                result.append( (n, destination) )
+                result.append((n, destination))
         return result
 
     def __contains__(self, item):
         """ Return true if a node (item) is in the graph. """
-        return (item in self._items)
+        return item in self._items
 
     def __getitem__(self, k):
         """ Return the list of nodes connected to the node k or raise exception
@@ -157,7 +157,7 @@ class Graph:
         return self._items[k]
 
     def items(self):
-        return [ x for x in self._items.items() ]
+        return [x for x in self._items.items()]
 
     def depth_first_nodes(self, start, visited=None):
         """ Return nodes from start using depth first algorithm. Note that 
@@ -168,7 +168,8 @@ class Graph:
         if visited is None: visited = set()
         visited.add(start)
         for t in self[start]:
-            if t in visited: continue
+            if t in visited:
+                continue
             yield from self.depth_first_nodes(t, visited)
 
     def depth_first_nodes_with_level(self, start, visited=None, lvl=0):
@@ -180,7 +181,8 @@ class Graph:
         if visited is None: visited = set()
         visited.add(start)
         for t in self[start]:
-            if t in visited: continue
+            if t in visited:
+                continue
             yield from self.depth_first_nodes_with_level(t, visited, lvl+1)
 
     def breadth_first_nodes(self, start):
@@ -191,12 +193,12 @@ class Graph:
         visited = set()
         queue = [start]
         while len(queue) > 0:
-            t = queue.pop() # take the last element
+            t = queue.pop()  # take the last element
             if t not in visited:
                 visited.add(t)
                 yield t
                 if len(self[t]) > 0:
-                    queue = list(self[t]) + queue # prepend the new nodes
+                    queue = list(self[t]) + queue  # prepend the new nodes
 
     def breadth_first_nodes_with_level(self, start):
         """ Return nodes from start using breadth first algorithm. Note that
@@ -207,12 +209,12 @@ class Graph:
         lvl = 0
         queue = [ (start, lvl) ]
         while len(queue) > 0:
-            t, current = queue.pop() # take the last element
+            t, current = queue.pop()  # take the last element
             if t not in visited:
                 visited.add(t)
                 yield (t, current)
                 if len(self[t]) > 0:
-                    queue = [(x, current+1) for x in self[t]] + queue # prepend the new nodes
+                    queue = [(x, current+1) for x in self[t]] + queue  # prepend the new nodes
 
     def find_path(self, start, end, path=[]):
         """ Find path between start and end. If there is no such path, return 
@@ -222,12 +224,13 @@ class Graph:
         path = path + [start]
         if start == end:
             return path
-        if not start in self:
+        if start not in self:
             return None
         for node in self[start]:
             if node not in path:
                 newpath = self.find_path(node, end, path)
-                if newpath: return newpath
+                if newpath:
+                    return newpath
         return None
 
     def find_all_paths(self, start, end, path=[]):
@@ -238,7 +241,7 @@ class Graph:
         path = path + [start]
         if start == end:
             return [path]
-        if not start in self:
+        if start not in self:
             return []
         paths = []
         for node in self[start]:

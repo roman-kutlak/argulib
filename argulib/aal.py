@@ -9,100 +9,99 @@
 import copy
 import logging
 from collections import defaultdict
-import traceback
 
 from .common import IllegalArgument, MethodNotApplicable
 from .kb import Literal, KnowledgeBase
 from .signals import Signal
 
-def get_log():
-    return logging.getLogger('arg.aaf')
+logger = logging.getLogger('arg.aaf')
+
 
 # TODO: consider adding method `attach` that attaches kb/aaf to signal.
-
-################################# Argument #####################################
 
 
 class Argument:
     """ Argument - based on Mikolaj Podlaszewski's code. """
-    
+
     def __init__(self, proof, framework=None):
         self._framework = framework
-        self.proof = proof # the proof on which the argument is based
+        self.proof = proof  # the proof on which the argument is based
         self.plus = set()  # set of arguments being attacked by this argument
-        self.minus = set() # set of arguments attacking this argument
-    
+        self.minus = set()  # set of arguments attacking this argument
+
     @property
     def name(self):
         """ Return the name of the argument based on the name of the proof. """
         return self.proof.name
-        
+
     @property
     def rule(self):
         """ Return the top rule used in the proof of this argument. """
         return self.proof.rule
-    
+
     @property
     def rules(self):
         """ Return all rules used in the proofs. """
         return self.proof.rules
-    
+
     @property
     def defeasible_rules(self):
         return self.proof.defeasible_rules
-    
+
     @property
     def strict_rules(self):
         """ Return a generator containing all strict rules used in this arg. """
         return self.proof.strict_rules
-    
+
     @property
     def consequent(self):
         """ Return the consequent (conclusion). """
         return self.proof.consequent
-    
+
     @property
     def conclusion(self):
         """ Return the consequent (conclusion). """
         return self.proof.consequent
-    
+
     @property
     def vulnerabilities(self):
         """ Return all possible vulnerabilities. """
         return self.proof.vulnerabilities
-    
+
     @property
     def antecedents(self):
         return self.proof.antecedents
-    
+
     @property
     def proofs(self):
         """ Return all proofs used by this argument including the top proof. """
         return self.proof.proofs
-    
+
+    @property
     def is_defeasible(self):
         """ Return True if the argument is based on a defeasible rule. """
-        return self.proof.is_defeasible()
-    
+        return self.proof.is_defeasible
+
+    @property
     def is_strict(self):
         """ Return True if the argument is based ONLY on strict rules. """
-        return self.proof.is_strict()
-    
+        return self.proof.is_strict
+
     def __hash__(self):
         return hash(self.proof)
-    
+
     def __eq__(self, other):
-        return (self.proof == other.proof)
-    
+        return self.proof == other.proof
+
     def __lt__(self, other):
         """ Re-use the order of the proofs. """
-        return (self.proof < other.proof)
-    
+        return self.proof < other.proof
+
     def __str__(self):
-        return ('%s: (%s)' % (self.name, str(self.rule)))
-    
+        return '%s: (%s)' % (self.name, str(self.rule))
+
     def __repr__(self):
-        return 'Argument ' + str(self)
+        return '<Argument %s>' % str(self)
 
     def clear(self):
         """ Remove the attack relations. """
@@ -110,14 +109,13 @@ class Argument:
         self.minus.clear()
 
 
-############################# ArgumentationFramework ###########################
-
-
 class ArgumentationFramework:
+    _hash = None
+
     def __init__(self, kb):
         self.debug = False
         self.kb = kb or KnowledgeBase()
-        self._arguments = defaultdict(set) # {conclusion : {arguments}}
+        self._arguments = defaultdict(set)  # {conclusion : {arguments}}
         if kb:
             # signals
             self.updated = Signal()
@@ -125,28 +123,30 @@ class ArgumentationFramework:
             self.kb.updated.connect(self._kb_updated)
             # calculate graph and attacks
             self.reconstruct()
-    
+
     def __str__(self):
-        tmp = lambda a: ('%s:\n\tattacking: %s\n\tattackers: %s'
-                         % (str(a),
-                            str(sorted([x.name for x in a.plus])),
-                            str(sorted([x.name for x in a.minus]))))
+        def helper(a):
+            return ('%s:\n\tattacking: %s\n\tattackers: %s' % (
+                str(a),
+                str(sorted([x.name for x in a.plus])),
+                str(sorted([x.name for x in a.minus]))))
+
         args = sorted(self.arguments, key=lambda x: x.name)
-        return '\n'.join([ tmp(a) for a in args])
-    
+        return '\n'.join([helper(a) for a in args])
+
     def __repr__(self):
         return 'Argumentation Framework:\n%s' % str(self)
-    
+
     def __hash__(self):
         """Return a hash. 
         
         Because the class uses signals, it has to be hashable.
         
         """
-        if not hasattr(self, 'hash'):
-            self.hash = hash(self.kb.name)
-        return self.hash
-    
+        if not self._hash:
+            self._hash = hash(self.kb.name)
+        return self._hash
+
     @property
     def arguments(self):
         """ Return the generator listing all arguments in the framework. """
@@ -159,7 +159,7 @@ class ArgumentationFramework:
         for a in self.arguments:
             if a.name == name: return a
         return None
-        
+
     def find_arguments_with_conclusion(self, conclusion):
         """ Return the set of arguments with the given conclusion or empty set.
         Method accepts a string or a Literal as a conclusion.
@@ -174,7 +174,7 @@ class ArgumentationFramework:
 
     def _kb_updated(self, proofs, added):
         """ KB was updated, reconstruct the graph and attack relations. """
-        get_log().debug('KB updated -- recalculating AAF')
+        logger.debug('KB updated -- recalculating AAF')
         if proofs:
             if added:
                 self._construct_arguments(proofs)
@@ -189,7 +189,7 @@ class ArgumentationFramework:
     def _construct_arguments(self, proofs):
         """ Construct the graph of the arguments for given proofs. """
         if not proofs: return
-        get_log().debug('Constructing arguments...')
+        logger.debug('Constructing arguments...')
         for p in proofs:
             a = Argument(p, self)
             self._arguments[a.consequent].add(a)
@@ -197,48 +197,45 @@ class ArgumentationFramework:
 
     def calculate_attacks(self):
         """ Take the existing arguments and create the attacks. """
-        get_log().debug('Reconstructing the attacks...')
+        logger.debug('Reconstructing the attacks...')
         # clear the attack relations first
         arguments = list(sorted(self.arguments))
         for a in arguments: a.clear()
         for a1 in arguments:
             for a2 in arguments:
-                if a2.is_strict() or a1 == a2: continue
+                if a2.is_strict or a1 == a2: continue
                 self._check_undercut(a1, a2)
                 self._check_rebut(a1, a2)
-        get_log().debug('Argumentation framework reconstructed.')
+        logger.debug('Argumentation framework reconstructed.')
         self.updated()
 
     # TODO: add the proof which is being attacked to `plus` and `minus`
-    
+
     def _check_undercut(self, a1, a2):
         # a1 undercuts a2 if a2 has a rule with vulnerability that is neg a1
-        get_log().debug('checking undercuts for ({0}) and ({1})'.
-                        format(a1, a2))
+        logger.debug('checking undercuts for (%s) and (%s)', a1, a2)
         for proof in a2.proofs:
-            if (-a1.conclusion in proof.vulnerabilities):
+            if -a1.conclusion in proof.vulnerabilities:
                 a1.plus.add(a2)
                 a2.minus.add(a1)
                 break
 
     def _check_rebut(self, a1, a2):
-        #weakest link approach
-        get_log().debug('checking rebut for ({0}) and ({1})'.
-                        format(a1, a2))
+        # weakest link approach
+        logger.debug('checking rebut for (%s) and (%s)', a1, a2)
         # a1 rebuts a2 if one of the subproofs of a2 has an opposite concl.
         for proof in a2.proofs:
-            if (-a1.conclusion == proof.conclusion):
-                if not (self.more_preferred(proof.weakest_link,
-                                            a1.proof.weakest_link)):
-                    get_log().debug('...rebut accepted')
+            if -a1.conclusion == proof.conclusion:
+                if not (self.more_preferred(proof.weakest_link, a1.proof.weakest_link)):
+                    logger.debug('...rebut accepted')
                     a1.plus.add(a2)
                     a2.minus.add(a1)
 
     def more_preferred(self, a, b):
         """ Return True if according to the KB a is preferred over b. """
         result = self.kb.more_preferred(a.rule, b.rule)
-        get_log().debug('{0} is {1}more preferred than {2}'
-            .format(a.rule, ('' if result else 'not '), b.rule))
+        logger.debug('{0} is {1}more preferred than {2}'
+                     .format(a.rule, ('' if result else 'not '), b.rule))
         return result
 
     def save_graph(self):
@@ -246,7 +243,9 @@ class ArgumentationFramework:
 
     def save_interesting_graph(self, path='af.pdf'):
         """ Only plot arguments that attack or are attacked by something. """
-        is_interesting = lambda x: len(x.plus) > 0 or len(x.minus) > 0
+
+        def is_interesting(x):
+            return len(x.plus) > 0 or len(x.minus) > 0
 
         arguments = [x for x in self.arguments if is_interesting(x)]
         self._save_graph(arguments)
@@ -254,12 +253,12 @@ class ArgumentationFramework:
     def _save_graph(self, arguments):
         try:
             import pygraphviz as gv
-            G = gv.AGraph(strict=False, directed=True)#, rankdir="LR"
+            G = gv.AGraph(strict=False, directed=True)  # , rankdir="LR"
             name = ''
             if self.kb is not None: name = self.kb.name
-            G.graph_attr['label']="Argumentation Framework from KB\n'%s'" % name
-            G.node_attr['shape']='oval'
-            G.edge_attr['color']='blue'
+            G.graph_attr['label'] = "Argumentation Framework from KB\n'%s'" % name
+            G.node_attr['shape'] = 'oval'
+            G.edge_attr['color'] = 'blue'
             l = Labelling.grounded(self)
 
             for a in arguments:
@@ -282,21 +281,18 @@ class ArgumentationFramework:
             print('Exception: %s' % str(e))
 
 
-################################ Labelling #####################################
-
-
 class Labelling:
     """Labelling (possibly partial)"""
     _framework, IN, OUT, UNDEC = None, None, None, None
 
-    def __init__(self, frame, IN = None, OUT = None, UNDEC = None):
+    def __init__(self, frame, IN=None, OUT=None, UNDEC=None):
         self.steps = dict()
         self._framework = frame or ArgumentationFramework(None)
         self.IN = IN or set()
         self.OUT = OUT or set()
         self.UNDEC = UNDEC
-        if self.UNDEC == None:
-            self._update_UNDEC()
+        if self.UNDEC is None:
+            self._update_undecided()
         # link to the aaf
         if frame:
             # signals
@@ -334,9 +330,12 @@ class Labelling:
         """ Create labelling for single argument where the labe is inverse. """
         lab = labelling.label
         arg = labelling.argument
-        if 'OUT' == lab: inv_lab = 'IN'
-        elif 'IN' == lab: inv_lab = 'OUT'
-        else: inv_lab = 'UNDEC'
+        if 'OUT' == lab:
+            inv_lab = 'IN'
+        elif 'IN' == lab:
+            inv_lab = 'OUT'
+        else:
+            inv_lab = 'UNDEC'
 
         l = Labelling.empty()
         l.add_arg(arg, inv_lab)
@@ -360,17 +359,15 @@ class Labelling:
         return l
 
     def _framework_updated(self):
-        get_log().debug('Framework updated -- reload labelling.')
+        logger.debug('Framework updated -- reload labelling.')
         self.UNDEC = set(self._framework.arguments)
         self.IN.clear()
         self.OUT.clear()
         self.up_complete_update()
         self.updated()
 
-    def _update_UNDEC(self):
-        """Updates UNDEC so that it contains arguments not present in IN and OUT
-        
-        """
+    def _update_undecided(self):
+        """Updates UNDEC so that it contains arguments not present in IN and OUT """
         self.UNDEC = set(self._framework.arguments)
         self.UNDEC.difference_update(self.IN, self.OUT)
 
@@ -381,36 +378,23 @@ class Labelling:
                 self.UNDEC == other.UNDEC)
 
     def __repr__(self):
-        IN = [a.name for a in self.IN]
-        OUT = [a.name for a in self.OUT]
-        UNDEC = [a.name for a in self.UNDEC]
-        IN.sort()
-        OUT.sort()
-        UNDEC.sort()
-        return "Labelling: ({%s},{%s},{%s})" % (', '.join(IN),
-                                                ', '.join(OUT),
-                                                ', '.join(UNDEC))
-    
+        _in = sorted(a.name for a in self.IN)
+        _out = sorted(a.name for a in self.OUT)
+        _undecided = sorted(a.name for a in self.UNDEC)
+        return "Labelling: ({%s},{%s},{%s})" % (', '.join(_in),
+                                                ', '.join(_out),
+                                                ', '.join(_undecided))
+
     def __str__(self):
         """Dialogue string representation: in(a,b)"""
-        res = []
-        IN = [a.name for a in self.IN]
-        if IN:
-            IN.sort()
-            res.append('in(%s)' % ','.join(IN))
-        
-        OUT = [a.name for a in self.OUT]
-        if OUT:
-            OUT.sort()
-            res.append('out(%s)' % ','.join(OUT))
-    
-        UNDEC = [a.name for a in self.UNDEC]
-        if UNDEC:
-            UNDEC.sort()
-            res.append('undec(%s)' % ','.join(UNDEC))
+        res = [
+            'in(%s)' % ','.join(sorted(a.name for a in self.IN)),
+            'out(%s)' % ','.join(sorted(a.name for a in self.OUT)),
+            'undec(%s)' % ','.join(sorted(a.name for a in self.UNDEC))
+        ]
         return ' '.join(res) if res else '-'
 
-    def getLab(self, arg):
+    def get_label(self, arg):
         """Returns status of argument"""
         if arg in self.IN:
             return "IN"
@@ -419,7 +403,9 @@ class Labelling:
         else:
             return "UNDEC"
 
-    def setLab(self, arg, status):
+    def set_label(self, arg, status):
+        if status not in ('IN', 'OUT', 'UNDEC'):
+            raise Exception("Wrong status: %s" % status)
         self.IN.discard(arg)
         self.OUT.discard(arg)
         self.UNDEC.discard(arg)
@@ -429,10 +415,8 @@ class Labelling:
             self.OUT.add(arg)
         elif status == "UNDEC":
             self.UNDEC.add(arg)
-        else:
-            raise Exception("Wrong status: %s" % status)
 
-    #Operations on labellings
+    # Operations on labellings
     def intersection(self, other):
         lab = copy.deepcopy(self)
         lab.intersection_update(other)
@@ -441,40 +425,36 @@ class Labelling:
     def intersection_update(self, other):
         self.IN &= other.IN
         self.OUT &= other.OUT
-        self._update_UNDEC()
+        self._update_undecided()
         return self
-    
+
     def union(self, other):
         lab = copy.deepcopy(self)
         lab.union_update(other)
         return lab
-    
+
     def union_update(self, other):
         self.IN |= other.IN - self.OUT
         self.OUT |= other.OUT - self.IN
-        self._update_UNDEC()
+        self._update_undecided()
         return self
-    
+
     def is_sublabelling(self, other):
         return (self.IN <= other.IN and
                 self.OUT <= other.OUT and
                 self.UNDEC <= other.UNDEC)
-    
-    def isLegallyOUT(self, arg):
+
+    def is_legally_out(self, arg):
         return arg.minus & self.IN
-    
-    def isLegallyIN(self, arg):
+
+    def is_legally_in(self, arg):
         return arg.minus <= self.OUT
-    
+
     def is_legally_conlictfree_IN(self, arg):
         return arg.minus <= self.OUT and not arg.plus & self.IN
-    
-    def isLegallyUNDEC(self, arg):
+
+    def is_legally_undecided(self, arg):
         return not arg.minus & self.IN and arg.minus & self.UNDEC
-
-
-################################################################################
-# Roman
 
     @property
     def arguments(self):
@@ -523,13 +503,10 @@ class Labelling:
             return True. Otherwise, return False.
 
         """
-        if (len(self.IN) == len(self)):
+        try:
+            _ = self.label
             return True
-        elif (len(self.OUT) == len(self)):
-            return True
-        elif (len(self.UNDEC == len(self))):
-            return True
-        else:
+        except MethodNotApplicable:
             return False
 
     @property
@@ -538,11 +515,11 @@ class Labelling:
             return the label. Otherwise, rais MethodNotApplicable.
             
         """
-        if (len(self.IN) == len(self)):
+        if len(self.IN) == len(self):
             return 'IN'
-        elif (len(self.OUT) == len(self)):
+        elif len(self.OUT) == len(self):
             return 'OUT'
-        elif (len(self.UNDEC) == len(self)):
+        elif len(self.UNDEC) == len(self):
             return 'UNDEC'
         else:
             raise MethodNotApplicable('Method "label" invoked on a labeling '
@@ -556,7 +533,7 @@ class Labelling:
 
         """
         args = self.arguments
-        if (len(args) != 1):
+        if len(args) != 1:
             raise MethodNotApplicable('Method "argument" invoked on labeling '
                                       'that does not have any arguments: %s' %
                                       str(self))
@@ -568,7 +545,7 @@ class Labelling:
 
         args = list()
         for la in labelled_arguments:
-            args.append( (self.steps[la.argument], la))
+            args.append((self.steps[la.argument], la))
 
         args = sorted(args, key=lambda x: x[0])
         return args[0][1]
@@ -576,10 +553,11 @@ class Labelling:
     def find_argument(self, string):
         return self._framework.find_argument(string)
 
-    def find_arguments_with_conclusion(self, concl_str):
-        concl = Literal.from_str(concl_str)
+    def find_arguments_with_conclusion(self, conclusion_str):
+        conclusion = Literal.from_str(conclusion_str)
         for arg in self.arguments:
-            if arg.conclusion == concl: yield arg
+            if arg.conclusion == conclusion:
+                yield arg
 
     def is_valid_conclusion(self, conclusion):
         possible = list(self.find_arguments_with_conclusion(conclusion))
@@ -590,25 +568,22 @@ class Labelling:
                 return True
 
 
-################################################################################
-
-
     def down_admissible_update(self):
         while True:
-            illigalIn = set([a for a in self.IN if not self.isLegallyIN(a)])
-            illigalOut = set([a for a in self.OUT if not self.isLegallyOUT(a)])
+            illigalIn = set([a for a in self.IN if not self.is_legally_in(a)])
+            illigalOut = set([a for a in self.OUT if not self.is_legally_out(a)])
             if not illigalIn and not illigalOut: return self
             self.IN -= illigalIn
             self.OUT -= illigalOut
             self.UNDEC |= illigalIn
             self.UNDEC |= illigalOut
-    
+
     def up_complete_update(self):
         counter = 0
         while True:
             counter += 1
-            legally_IN = set([a for a in self.UNDEC if self.isLegallyIN(a)])
-            legally_OUT = set([a for a in self.UNDEC if self.isLegallyOUT(a)])
+            legally_IN = set([a for a in self.UNDEC if self.is_legally_in(a)])
+            legally_OUT = set([a for a in self.UNDEC if self.is_legally_out(a)])
             if not legally_IN and not legally_OUT:
                 for a in self.UNDEC:
                     if a not in self.steps:
@@ -628,50 +603,51 @@ class Labelling:
 
     def up_complete_step(self):
         L = Labelling(self._framework, self.IN, self.OUT, self.UNDEC)
-        legally_IN = set([a for a in L.UNDEC if L.isLegallyIN(a)])
+        legally_IN = set([a for a in L.UNDEC if L.is_legally_in(a)])
         if legally_IN:
             L.IN |= legally_IN
             L.UNDEC.difference_update(legally_IN)
-            legally_OUT = set([a for a in L.UNDEC if L.isLegallyOUT(a)])
+            legally_OUT = set([a for a in L.UNDEC if L.is_legally_out(a)])
             if legally_OUT:
                 L.OUT |= legally_OUT
                 L.UNDEC -= legally_OUT
             return L
         return False
-    
+
     def diffargs(self, other):
         """return set of args on which labellings differ"""
         return (self.IN & other.OUT) | (self.IN & other.UNDEC) | \
-            (self.OUT & other.IN) | (self.OUT & other.UNDEC) | \
-            (self.UNDEC & other.IN) | (self.UNDEC & other.OUT)
-    
+               (self.OUT & other.IN) | (self.OUT & other.UNDEC) | \
+               (self.UNDEC & other.IN) | (self.UNDEC & other.OUT)
+
     def split(self):
         """splits current labelling into single agrument labellings and returns as a list"""
         LL = []
-        for a in self.IN: LL.append(self._framework.in_labelling([a]))
-        for a in self.OUT: LL.append(self._framework.out_labelling([a]))
-        for a in self.UNDEC: LL.append(self._framework.UNDEC_labelling([a]))
+        for a in self.IN:
+            LL.append(self._framework.in_labelling([a]))
+        for a in self.OUT:
+            LL.append(self._framework.out_labelling([a]))
+        for a in self.UNDEC:
+            LL.append(self._framework.UNDEC_labelling([a]))
         return LL
-    
+
     def __len__(self):
         return len(self.IN) + len(self.OUT) + len(self.UNDEC)
-    
+
     def __sub__(self, other):
-        return Labelling(self._framework,self.IN - other.IN, self.OUT - other.OUT, self.UNDEC - other.UNDEC)
-    
+        return Labelling(self._framework, self.IN - other.IN, self.OUT - other.OUT, self.UNDEC - other.UNDEC)
+
     def __and__(self, other):
-        return Labelling(self._framework,self.IN & other.IN, self.OUT & other.OUT, self.UNDEC & other.UNDEC)
+        return Labelling(self._framework, self.IN & other.IN, self.OUT & other.OUT, self.UNDEC & other.UNDEC)
 
 
-
-################################################################################
 # helpers
 
 # TODO: reverse order of parameters
 def is_in(labelling, arg):
     """ Check whether an argument is IN wrt to this labelling. """
     # an argument IN in if all of its attackers are OUT
-    return ((arg.minus & labelling.OUT) == arg.minus)
+    return (arg.minus & labelling.OUT) == arg.minus
 
 
 def is_out(labelling, arg):
@@ -683,21 +659,26 @@ def is_out(labelling, arg):
 def is_undec(labelling, arg):
     """ Check whether an argument is UNDEC wrt to this labelling. """
     # an argument is UNDEC if non of its attackers are IN but not all are OUT
-    return (not is_in(labelling, arg) and not is_out)
+    return not is_in(labelling, arg) and not is_out
+
 
 def assign_label_from(labelling, arg):
-    if is_in(labelling, arg): return 'IN'
-    elif is_out(labelling, arg): return 'OUT'
-    elif is_undec(labelling, arg): return 'UNDEC'
-    else: return None
+    if is_in(labelling, arg):
+        return 'IN'
+    elif is_out(labelling, arg):
+        return 'OUT'
+    elif is_undec(labelling, arg):
+        return 'UNDEC'
+    else:
+        return None
+
 
 def is_justified(lab_arg, labelling):
     """ Return true if the label is justified by the given labelling """
-    if (len(lab_arg) == 0): return True # empty labelling
-    return (lab_arg.label == assign_label_from(labelling, lab_arg.argument))
+    if len(lab_arg) == 0:
+        return True  # empty labelling
+    return lab_arg.label == assign_label_from(labelling, lab_arg.argument)
 
-# helpers
-################################################################################
 
 def s2s(s):
     """convert set to string"""
@@ -706,15 +687,3 @@ def s2s(s):
 
 def arg_to_str(a):
     return '%s(%s)' % (a.name, str(a.rule))
-
-
-# some instances for interactive testing
-################################################################################
-
-AF = ArgumentationFramework
-
-#kb = KnowledgeBase.from_file('/Users/roman/Work/Aspic-/data/eg_tandem.txt')
-#
-#af = ArgumentationFramework(kb)
-#
-#af.save_graph()
