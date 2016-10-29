@@ -46,6 +46,7 @@ class Dialog:
 
     """
 
+
     def __init__(self, kb_path=None):
         self.load_kb(kb_path)
         self.discussion = None
@@ -224,11 +225,11 @@ class Dialog:
                          str(missing))
 
         # if all fails...
-        return ('No idea. The examined rules are: "%s"' % rules)
+        return 'No idea. The examined rules are: "%s"' % rules
 
     def do_assert(self, rule):
         # if user asserts only a conclusion, add the defeasible rule synt. part
-        if ('>' not in rule and '<' not in rule):
+        if '>' not in rule and '<' not in rule:
             rule = '==> ' + rule
         try:
             res = self.add(rule)
@@ -241,7 +242,7 @@ class Dialog:
             return str(pe)
 
     def do_retract(self, rule):
-        if ('>' not in rule and '<' not in rule):
+        if '>' not in rule and '<' not in rule:
             rule = '==> ' + rule
         try:
             res = self.delete(rule)
@@ -249,7 +250,6 @@ class Dialog:
                 return 'deleted %s' % str(rule)
             else:
                 return 'no rule "%s" found' % str(rule)
-            return res
         except Exception as e:
             return str(e)
 
@@ -286,8 +286,8 @@ class Dialog:
         logger.info('parsing command: "%s"' % command)
         tmp = command.strip().split(' ')
 #        print('User command: %s' % str(tmp))
-        if len(tmp) < 2:
-            return('the command "%s" has too few arguments' % command)
+#         if len(tmp) < 2:
+#             return('the command "%s" has too few arguments' % command)
 
         if 'why' == tmp[0]:
             if ('IN' == tmp[1].upper() or
@@ -299,10 +299,6 @@ class Dialog:
                 return self.do_question(tmp[1], tmp[2])
             return self.do_justify(tmp[1])
 
-        elif 'assert' == tmp[0]:
-            rule = ' '.join(tmp[1:]) # the rule was split, put it back together
-            return self.do_assert(rule)
-
         elif 'retract' == tmp[0]:
             rule = ' '.join(tmp[1:])
             return self.do_retract(rule)
@@ -313,11 +309,27 @@ class Dialog:
             else: return 'Unknown parameter "%s"' % tmp[1]
         elif 'save' == tmp[0]:
             self.aaf.save_interesting_graph()
-        else: return 'Unknown command'
-
+        elif 'help' == tmp[0]:
+            return """
+The commands have form:
+    why in x  - discuss why is an argument with conclusion x labeled IN
+    why out x - discuss why is an argument with conclusion x labeled OUT
+    why p     - what reasoning lead to conclusion p
+    why not p - what reasoning lead to conclusion -p
+    assert r  - add a rule to the knowledge base
+    retract r - remove a rule from the knowledge base
+    print af  - print argulib framework
+    pring kb  - print knowledge base
+    concede   - concede to the last open issue
+            """
+        else:
+            tmp = tmp[1:] if tmp[0] == 'assert' else tmp
+            rule = ' '.join(tmp)  # the rule was split, put it back together
+            return self.do_assert(rule)
 
 
 ################################ unused ################################
+
 
 class Commands(Cmd):
     intro = "Persuasion dialogue."

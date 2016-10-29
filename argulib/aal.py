@@ -7,6 +7,7 @@
 """
 
 import copy
+import json
 import logging
 from collections import defaultdict
 
@@ -144,7 +145,7 @@ class ArgumentationFramework:
         
         """
         if not self._hash:
-            self._hash = hash(self.kb.name)
+            self._hash = hash(str(self))
         return self._hash
 
     @property
@@ -233,9 +234,9 @@ class ArgumentationFramework:
 
     def more_preferred(self, a, b):
         """ Return True if according to the KB a is preferred over b. """
-        result = self.kb.more_preferred(a.rule, b.rule)
+        result = self.kb.more_preferred(a, b)
         logger.debug('{0} is {1}more preferred than {2}'
-                     .format(a.rule, ('' if result else 'not '), b.rule))
+                     .format(a, ('' if result else 'not '), b))
         return result
 
     def save_graph(self):
@@ -283,11 +284,11 @@ class ArgumentationFramework:
 
 class Labelling:
     """Labelling (possibly partial)"""
-    _framework, IN, OUT, UNDEC = None, None, None, None
+    framework, IN, OUT, UNDEC = None, None, None, None
 
     def __init__(self, frame, IN=None, OUT=None, UNDEC=None):
         self.steps = dict()
-        self._framework = frame or ArgumentationFramework(None)
+        self.framework = frame or ArgumentationFramework(None)
         self.IN = IN or set()
         self.OUT = OUT or set()
         self.UNDEC = UNDEC
@@ -297,17 +298,27 @@ class Labelling:
         if frame:
             # signals
             self.updated = Signal()
-            self._framework.updated.connect(self._framework_updated)
+            self.framework.updated.connect(self._framework_updated)
 
     def __hash__(self):
-        """Return a hash. 
-        
-        Because the class uses signals, it has to be hashable.
-        
-        """
+        """Return a hash (needed for signals)."""
         if not hasattr(self, 'hash'):
-            self.hash = hash(self._framework)
+            self.hash = hash(self.framework)
         return self.hash
+
+    def to_dict(self):
+        return {
+            'IN': [x.name for x in self.IN],
+            'OUT': [x.name for x in self.OUT],
+            'UNDEC': [x.name for x in self.UNDEC],
+        }
+
+    @classmethod
+    def from_dictcls(cls, aaf, data):
+        return cls(aaf,
+                   data['IN'],
+                   data['OUT'],
+                   data['UNDEC'])
 
     # Predefined labellings
     @classmethod
@@ -360,7 +371,7 @@ class Labelling:
 
     def _framework_updated(self):
         logger.debug('Framework updated -- reload labelling.')
-        self.UNDEC = set(self._framework.arguments)
+        self.UNDEC = set(self.framework.arguments)
         self.IN.clear()
         self.OUT.clear()
         self.up_complete_update()
@@ -368,7 +379,7 @@ class Labelling:
 
     def _update_undecided(self):
         """Updates UNDEC so that it contains arguments not present in IN and OUT """
-        self.UNDEC = set(self._framework.arguments)
+        self.UNDEC = set(self.framework.arguments)
         self.UNDEC.difference_update(self.IN, self.OUT)
 
     def __eq__(self, other):
@@ -551,7 +562,7 @@ class Labelling:
         return args[0][1]
 
     def find_argument(self, string):
-        return self._framework.find_argument(string)
+        return self.framework.find_argument(string)
 
     def find_arguments_with_conclusion(self, conclusion_str):
         conclusion = Literal.from_str(conclusion_str)
@@ -602,7 +613,7 @@ class Labelling:
                     self.steps[a] = counter
 
     def up_complete_step(self):
-        L = Labelling(self._framework, self.IN, self.OUT, self.UNDEC)
+        L = Labelling(self.framework, self.IN, self.OUT, self.UNDEC)
         legally_IN = set([a for a in L.UNDEC if L.is_legally_in(a)])
         if legally_IN:
             L.IN |= legally_IN
@@ -624,21 +635,21 @@ class Labelling:
         """splits current labelling into single agrument labellings and returns as a list"""
         LL = []
         for a in self.IN:
-            LL.append(self._framework.in_labelling([a]))
+            LL.append(self.framework.in_labelling([a]))
         for a in self.OUT:
-            LL.append(self._framework.out_labelling([a]))
+            LL.append(self.framework.out_labelling([a]))
         for a in self.UNDEC:
-            LL.append(self._framework.UNDEC_labelling([a]))
+            LL.append(self.framework.UNDEC_labelling([a]))
         return LL
 
     def __len__(self):
         return len(self.IN) + len(self.OUT) + len(self.UNDEC)
 
     def __sub__(self, other):
-        return Labelling(self._framework, self.IN - other.IN, self.OUT - other.OUT, self.UNDEC - other.UNDEC)
+        return Labelling(self.framework, self.IN - other.IN, self.OUT - other.OUT, self.UNDEC - other.UNDEC)
 
     def __and__(self, other):
-        return Labelling(self._framework, self.IN & other.IN, self.OUT & other.OUT, self.UNDEC & other.UNDEC)
+        return Labelling(self.framework, self.IN & other.IN, self.OUT & other.OUT, self.UNDEC & other.UNDEC)
 
 
 # helpers

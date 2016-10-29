@@ -476,13 +476,16 @@ class Proof:
         """ Find the weakest rule based on the preference of the knowledge base. """
         # FIXME: this actually just finds the least preferred rule wrt to itself
         #   the weakest link should really be calculated between two proofs
-        #   because preferences might not be defined over every pari of rules
-        self.weakest_link = self
-        for link in [p.weakest_link for p in self.proofs]:
-            if kb.less_preferred(link, self.weakest_link):
-                self.weakest_link = link
-        logger.debug('Weakest link of {0} set to \n\t{1}'
-                     .format(self, self.weakest_link))
+        #   because preferences might not be defined over every pair of rules
+        self.weakest_link = self.rule
+        if not self.is_strict:
+            for link in [p.weakest_link for p in self.proofs]:
+                if self.weakest_link.is_strict and link.is_defeasible:
+                    self.weakest_link = link
+                elif kb.less_preferred(link, self.weakest_link):
+                    self.weakest_link = link
+            logger.debug('Weakest link of {0} set to \n\t{1}'
+                         .format(self, self.weakest_link))
         return self.weakest_link
 
 
@@ -913,8 +916,10 @@ class KnowledgeBase:
     def more_preferred(self, rule_a, rule_b):
         """ Return True if rule 'a' is more preferred than rule 'b'. """
         # a is preferred over b if there is a path from a to b
-        path = self._prefs.find_path(rule_a.name, rule_b.name)
-        return path is not None and path != [rule_a.name]
+        a = rule_a.name if not isinstance(rule_a, str) else rule_a
+        b = rule_b.name if not isinstance(rule_b, str) else rule_b
+        path = self._prefs.find_path(a, b)
+        return path is not None and path != [a]
 
     def less_preferred(self, rule_a, rule_b):
         """ Return True if rule 'a' is less preferred than rule 'b'. """
