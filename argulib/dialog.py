@@ -288,8 +288,9 @@ class Dialog:
 #        print('User command: %s' % str(tmp))
 #         if len(tmp) < 2:
 #             return('the command "%s" has too few arguments' % command)
-
-        if 'why' == tmp[0]:
+        if tmp[0].startswith('#'):
+            return
+        elif 'why' == tmp[0]:
             if ('IN' == tmp[1].upper() or
                'OUT' == tmp[1].upper() or
                'UNDEC' == tmp[1].upper() or
@@ -309,7 +310,7 @@ class Dialog:
             else: return 'Unknown parameter "%s"' % tmp[1]
         elif 'save' == tmp[0]:
             self.aaf.save_interesting_graph()
-        elif 'help' == tmp[0]:
+        elif 'help' in tmp[0]:
             return """
 The commands have form:
     why in x  - discuss why is an argument with conclusion x labeled IN
