@@ -8,5 +8,8 @@ setup(
     license='BSD',
     author='Roman Kutlak',
     author_email='kutlak.roman@gmail.com',
-    description='A simple library for formal argumentation'
+    description='A simple library for formal argumentation',
+    install_requires=[
+        'pyparsing'
+    ],
 )
